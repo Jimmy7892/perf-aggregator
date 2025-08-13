@@ -1,0 +1,8 @@
+[
+  { "timestamp": "2024-01-01T10:00:10.000Z", "price_usd": 100.0, "size_base": 0.5, "fee_usd": 0.02 },
+  { "timestamp": "2024-01-01T10:15:00.000Z", "price_usd": 101.0, "size_base": 0.4, "fee_usd": 0.02 },
+  { "timestamp": "2024-01-01T10:45:00.000Z", "price_usd": 102.0, "size_base": 0.3, "fee_usd": 0.02 },
+  { "timestamp": "2024-01-01T11:05:00.000Z", "price_usd": 103.0, "size_base": 0.6, "fee_usd": 0.03 },
+  { "timestamp": "2024-01-01T11:30:00.000Z", "price_usd": 104.0, "size_base": 0.7, "fee_usd": 0.03 }
+]
+

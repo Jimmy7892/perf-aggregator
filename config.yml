@@ -1,0 +1,18 @@
+# Configuration pour l'agrégateur
+backend_url: http://localhost:3010
+aggregator_port: 5000
+aggregator_ws_port: 5010
+
+# Pour les tests avec mock exchange
+mock_exchange_url: http://localhost:4010
+mock_exchange_ws_url: ws://localhost:4011/ws/trades
+
+# Symboles à traiter
+symbols:
+  - BTCUSDT
+  - ETHUSDT
+
+# Client ID pour identification
+client_id: aggregator-service
+version: 0.2.0
+
