@@ -18,7 +18,7 @@ export interface UserConfig {
   apiKey: string;
   secret: string;
   sandbox?: boolean;
-  symbols?: string[];
+  accountType?: 'spot' | 'futures' | 'margin'; // Type de compte à surveiller
   apiInterval?: number; // Intervalle en ms pour les appels API
   maxRetries?: number;
 }
@@ -132,55 +132,48 @@ export class ExchangeConnector extends EventEmitter {
       if (!this.isRunning) return;
       
       try {
-        const symbols = config.symbols || ['BTC/USDT', 'ETH/USDT'];
         const lastTimestamp = this.lastTradeTimestamps.get(exchangeKey) || Date.now() - 60000;
         
-        for (const symbol of symbols) {
-          try {
-            // Appel API REST pour récupérer les trades récents
-            const trades = await exchange.fetchMyTrades(symbol, lastTimestamp, 100);
+        // Récupérer TOUS les trades récents sans spécifier de symbole
+        const trades = await exchange.fetchMyTrades(undefined, lastTimestamp, 100);
+        
+        if (trades.length > 0) {
+          console.log(`📊 ${trades.length} nouveaux trades pour ${userId} (tous symboles)`);
+          
+          // Réduire l'intervalle si activité détectée
+          if (consecutiveEmptyResponses > 0) {
+            currentInterval = Math.max(baseInterval / 2, 30000); // Min 30s
+            consecutiveEmptyResponses = 0;
+            console.log(`⚡ Activité détectée, intervalle réduit à ${currentInterval}ms`);
+          }
+          
+          for (const trade of trades) {
+            const userTrade: UserTrade = {
+              userId,
+              symbol: trade.symbol,
+              side: trade.side as 'buy' | 'sell',
+              amount: trade.amount,
+              price: trade.price,
+              fee: trade.fee?.cost || 0,
+              timestamp: trade.timestamp || Date.now(),
+              exchange: config.exchange
+            };
             
-            if (trades.length > 0) {
-              console.log(`📊 ${trades.length} nouveaux trades pour ${userId} sur ${symbol}`);
-              
-              // Réduire l'intervalle si activité détectée
-              if (consecutiveEmptyResponses > 0) {
-                currentInterval = Math.max(baseInterval / 2, 30000); // Min 30s
-                consecutiveEmptyResponses = 0;
-                console.log(`⚡ Activité détectée, intervalle réduit à ${currentInterval}ms`);
-              }
-              
-              for (const trade of trades) {
-                const userTrade: UserTrade = {
-                  userId,
-                  symbol: trade.symbol,
-                  side: trade.side as 'buy' | 'sell',
-                  amount: trade.amount,
-                  price: trade.price,
-                  fee: trade.fee?.cost || 0,
-                  timestamp: trade.timestamp || Date.now(),
-                  exchange: config.exchange
-                };
-                
-                // Émettre le trade pour traitement
-                this.emit('trade', userTrade);
-                
-                // Mettre à jour le timestamp du dernier trade
-                if (trade.timestamp > lastTimestamp) {
-                  this.lastTradeTimestamps.set(exchangeKey, trade.timestamp);
-                }
-              }
-            } else {
-              consecutiveEmptyResponses++;
-              
-              // Augmenter l'intervalle si pas d'activité
-              if (consecutiveEmptyResponses >= 5) {
-                currentInterval = Math.min(baseInterval * 2, 300000); // Max 5min
-                console.log(`😴 Pas d'activité, intervalle augmenté à ${currentInterval}ms`);
-              }
+            // Émettre le trade pour traitement
+            this.emit('trade', userTrade);
+            
+            // Mettre à jour le timestamp du dernier trade
+            if (trade.timestamp > lastTimestamp) {
+              this.lastTradeTimestamps.set(exchangeKey, trade.timestamp);
             }
-          } catch (symbolError) {
-            console.error(`❌ Erreur récupération trades ${userId} sur ${symbol}:`, symbolError);
+          }
+        } else {
+          consecutiveEmptyResponses++;
+          
+          // Augmenter l'intervalle si pas d'activité
+          if (consecutiveEmptyResponses >= 5) {
+            currentInterval = Math.min(baseInterval * 2, 300000); // Max 5min
+            console.log(`😴 Pas d'activité, intervalle augmenté à ${currentInterval}ms`);
           }
         }
         
@@ -192,7 +185,7 @@ export class ExchangeConnector extends EventEmitter {
         
         // Retry logic avec backoff exponentiel
         if (retryCount < maxRetries) {
-          const backoffDelay = Math.min(interval * Math.pow(2, retryCount), 300000); // Max 5 minutes
+          const backoffDelay = Math.min(baseInterval * Math.pow(2, retryCount), 300000); // Max 5 minutes
           console.log(`🔄 Retry ${retryCount + 1}/${maxRetries} dans ${backoffDelay}ms pour ${userId}`);
           
           setTimeout(() => pollTrades(retryCount + 1), backoffDelay);

@@ -7,7 +7,7 @@ const config = {
   apiKey: process.env.BINANCE_API_KEY,
   secret: process.env.BINANCE_SECRET,
   sandbox: true, // Utiliser le sandbox pour les tests
-  symbols: ['BTC/USDT', 'ETH/USDT'],
+  accountType: 'spot', // spot, futures, ou margin
   apiInterval: 60000, // 1 minute entre les appels API (polling adaptatif)
   maxRetries: 3
 };
@@ -37,7 +37,7 @@ async function startService() {
     await connector.start();
     
     console.log('✅ Service démarré avec API REST adaptatif');
-    console.log(`📡 Monitoring ${config.symbols.join(', ')} avec polling intelligent`);
+    console.log(`📡 Monitoring automatique de tous les symboles (${config.accountType})`);
     console.log('🔄 Intervalle adaptatif : 30s-5min selon l\'activité');
     
   } catch (error) {

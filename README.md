@@ -18,10 +18,11 @@ Service dagrégation temps réel: collecte de trades via API REST optimisée, ag
 - AGGREGATOR_PRIVATE_KEY (chemin de la clé privée ED25519 montée en volume)
 
 ### Configuration des exchanges
-- `apiInterval` : Intervalle entre les appels API (défaut: 30000ms)
+- `apiInterval` : Intervalle entre les appels API (défaut: 60000ms)
 - `maxRetries` : Nombre de tentatives en cas d'échec (défaut: 3)
-- `symbols` : Liste des paires à surveiller
+- `accountType` : Type de compte à surveiller ('spot', 'futures', 'margin')
 - `sandbox` : Utiliser l'environnement de test
+- **Détection automatique** : Tous les symboles tradés sont détectés automatiquement
 
 ## Build & exécution
 
