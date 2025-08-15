@@ -8,7 +8,7 @@ import axios from "axios";
 import { canonicalize } from "./libs/canonical.js";
 import { signEd25519Base64, decryptRsaOaepJson, hmacSha256Hex } from "./libs/crypto.js";
 import { ExchangeConnector, UserConfig, UserTrade } from "./exchange-connector.js";
-import { TradeAggregator, MinuteAggregation } from "./trade-aggregator.js";
+import { TradeAggregator, TradeMetrics } from "./trade-aggregator.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -277,8 +277,12 @@ class AggregationService {
     this.exchangeConnector.removeUser(userId);
   }
 
-  getUserAggregations(userId: string): MinuteAggregation[] {
-    return this.tradeAggregator.getMinuteAggregations().filter(agg => agg.userId === userId);
+  getUserMetrics(userId: string): TradeMetrics[] {
+    return this.tradeAggregator.getAllUserMetrics(userId);
+  }
+
+  getUserSummary(userId: string) {
+    return this.tradeAggregator.getSummary(userId);
   }
 
   async startExchangeConnector(): Promise<void> {
@@ -335,10 +339,16 @@ app.delete("/users/:userId", async (request: FastifyRequest<{ Params: { userId: 
   return { success: true, message: "Utilisateur supprimé" };
 });
 
-// Obtenir les agrégations par minute d'un utilisateur
-app.get("/users/:userId/aggregations", async (request: FastifyRequest<{ Params: { userId: string } }>, reply) => {
-  const aggregations = aggregationService.getUserAggregations(request.params.userId);
-  return { aggregations };
+// Obtenir les métriques d'un utilisateur
+app.get("/users/:userId/metrics", async (request: FastifyRequest<{ Params: { userId: string } }>, reply) => {
+  const metrics = aggregationService.getUserMetrics(request.params.userId);
+  return { metrics };
+});
+
+// Obtenir le résumé d'un utilisateur
+app.get("/users/:userId/summary", async (request: FastifyRequest<{ Params: { userId: string } }>, reply) => {
+  const summary = aggregationService.getUserSummary(request.params.userId);
+  return { summary };
 });
 
 // Enrollment stateless: reçoit une enveloppe chiffrée (RSA-OAEP b64), renvoie un clientId pseudonyme
@@ -378,57 +388,19 @@ app.listen({ port: httpPort, host: "0.0.0.0" }).then(async () => {
   // Démarrer le connecteur d'exchanges
   await aggregationService.startExchangeConnector();
   
-  // Envoyer les agrégations au backend toutes les minutes
-  const sendAggregationsInterval = setInterval(async () => {
+  // Nettoyer les données anciennes toutes les heures
+  const cleanupInterval = setInterval(() => {
     try {
-      const aggregations = aggregationService.tradeAggregator.getMinuteAggregations(new Date(Date.now() - 60000));
-      
-      if (aggregations.length > 0) {
-        for (const agg of aggregations) {
-            const payload = {
-              client_id: "test-client-1",
-            exchange: "live",
-            connector_version: "0.2.0",
-            period_start: agg.timestamp,
-            period_end: agg.timestamp,
-            hourly_buckets: [{
-              t: agg.timestamp,
-              return_pct: agg.returnPct,
-              trades: agg.tradesCount,
-              volume_base: agg.volume,
-              volume_quote: agg.volume,
-              fees_usd: agg.fees
-            }],
-            totals: {
-              trades: agg.tradesCount,
-              volume_base: agg.volume,
-              volume_quote: agg.volume,
-              fees_usd: agg.fees
-            },
-          };
-
-          const canonical = canonicalize(payload);
-          const signature = signEd25519Base64(canonical, aggregationService.privateKey);
-          const digest = createHash("sha256").update(canonical).digest("hex");
-
-          (payload as any).signature = signature;
-          const response = await axios.post(`${aggregationService.backendUrl}/api/ingest`, payload, {
-            headers: { "Content-Type": "application/json" },
-            timeout: 30000
-          });
-
-          console.log(`📤 Agrégation envoyée pour ${agg.userId}: ${agg.returnPct.toFixed(2)}% return`);
-        }
-      }
+      aggregationService.tradeAggregator.cleanupOldData();
     } catch (error) {
-      console.error('❌ Erreur envoi agrégations:', error);
+      console.error('❌ Erreur nettoyage données:', error);
     }
-  }, 60000); // Toutes les minutes
+  }, 60 * 60 * 1000); // Toutes les heures
 
   // Graceful shutdown
   const shutdown = () => {
     console.log('🛑 Arrêt du service...');
-    clearInterval(sendAggregationsInterval);
+    clearInterval(cleanupInterval);
     aggregationService.stopExchangeConnector();
     process.exit(0);
   };

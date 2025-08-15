@@ -1,13 +1,27 @@
 ﻿# Aggregator Service
 
-Service dagrégation temps réel: collecte de trades via WebSocket, agrégation en mémoire, signature ED25519 et envoi vers une API dingestion compatible (vendorneutral).
+Service dagrégation temps réel: collecte de trades via API REST optimisée, agrégation en mémoire, signature ED25519 et envoi vers une API dingestion compatible (vendorneutral).
+
+## Architecture
+
+- **API REST** : Récupération des trades depuis les exchanges (polling optimisé avec retry)
+- **WebSocket** : Interface temps réel pour les clients (optionnel)
+- **TEE Enclave** : Traitement sécurisé des données sensibles
+- **Signature ED25519** : Intégrité cryptographique des agrégations
 
 ## Configuration
 
+### Variables d'environnement
 - AGGREGATOR_PORT (défaut: 5000)
 - AGGREGATOR_WS_PORT (défaut: 5010)
 - AGGREGATOR_BACKEND_URL (URL de lAPI dingestion; ex: http://localhost:3010)
 - AGGREGATOR_PRIVATE_KEY (chemin de la clé privée ED25519 montée en volume)
+
+### Configuration des exchanges
+- `apiInterval` : Intervalle entre les appels API (défaut: 30000ms)
+- `maxRetries` : Nombre de tentatives en cas d'échec (défaut: 3)
+- `symbols` : Liste des paires à surveiller
+- `sandbox` : Utiliser l'environnement de test
 
 ## Build & exécution
 
