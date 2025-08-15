@@ -198,7 +198,6 @@ export class TradeAggregator {
     totalReturnPct: number;
     totalReturnUsd: number;
     totalFees: number;
-    symbols: string[];
   } {
     const userMetrics = this.getAllUserMetrics(userId);
     
@@ -210,15 +209,12 @@ export class TradeAggregator {
     // Return % pondéré par volume
     const totalReturnPct = totalVolume > 0 ? (totalReturnUsd / totalVolume) * 100 : 0;
     
-    const symbols = [...new Set(userMetrics.map(m => m.symbol))];
-    
     return {
       totalVolume,
       totalTrades,
       totalReturnPct,
       totalReturnUsd,
-      totalFees,
-      symbols
+      totalFees
     };
   }
 }

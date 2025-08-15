@@ -20,12 +20,11 @@ async function getMetricsExample() {
     const summary = await summaryResponse.json();
     
     console.log('\n🎯 RÉSUMÉ GLOBAL:');
-    console.log(`💰 Volume total: $${summary.summary.totalVolume.toLocaleString()}`);
-    console.log(`📈 Trades totaux: ${summary.summary.totalTrades}`);
-    console.log(`📊 Return %: ${summary.summary.totalReturnPct.toFixed(2)}%`);
-    console.log(`💵 Return $: $${summary.summary.totalReturnUsd.toFixed(2)}`);
-    console.log(`💸 Frais totaux: $${summary.summary.totalFees.toFixed(2)}`);
-    console.log(`💎 Symboles: ${summary.summary.symbols.join(', ')}`);
+         console.log(`💰 Volume total: $${summary.summary.totalVolume.toLocaleString()}`);
+     console.log(`📈 Trades totaux: ${summary.summary.totalTrades}`);
+     console.log(`📊 Return %: ${summary.summary.totalReturnPct.toFixed(2)}%`);
+     console.log(`💵 Return $: $${summary.summary.totalReturnUsd.toFixed(2)}`);
+     console.log(`💸 Frais totaux: $${summary.summary.totalFees.toFixed(2)}`);
 
     // 2. Obtenir les métriques détaillées par symbole
     console.log('\n📋 MÉTRIQUES PAR SYMBOLE:');
