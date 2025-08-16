@@ -63,18 +63,20 @@ export interface DecryptedCredentials {
   symbols?: string[];
 }
 
-export interface AggregateResult {
-  pnl: number;
-  sharpe: number;
+export interface PerformanceMetrics {
   volume: number;
   trades: number;
-  from: string;
-  to: string;
+  returnPct: number;
+  returnUsd: number;
+  totalFees: number;
+  realizedPnL: number;
+  periodStart: string;
+  periodEnd: string;
 }
 
 export interface SignedAggregates {
   signature: string;
-  payload: AggregateResult;
+  payload: PerformanceMetrics;
 }
 
 export interface AttestationQuote {
@@ -104,8 +106,8 @@ export interface RequestAggregatesRequest {
   session_id: string;
 }
 
-export interface RequestAggregatesResponse {
-  aggregates_signed: SignedAggregates;
+export interface RequestMetricsResponse {
+  metrics_signed: SignedAggregates;
   merkle_root: string;
   logs_url?: string;
 }
@@ -142,6 +144,37 @@ export interface EnclaveConfig {
   defaultTtl: number;
   rateLimitMax: number;
   rateLimitWindow: number;
+}
+
+// Trade aggregation types
+export interface UserTrade {
+  userId: string;
+  symbol: string;
+  side: 'buy' | 'sell';
+  amount: number;
+  price: number;
+  fee: number;
+  timestamp: number;
+  exchange: string;
+}
+
+export interface TradePair {
+  buyTrade: UserTrade;
+  sellTrade: UserTrade;
+  returnPct: number;
+  returnUsd: number;
+  fees: number;
+}
+
+export interface UserConfig {
+  userId: string;
+  exchange: string;
+  apiKey: string;
+  secret: string;
+  sandbox?: boolean;
+  accountType?: 'spot' | 'futures' | 'margin';
+  apiInterval?: number;
+  maxRetries?: number;
 }
 
 // Crypto helper types

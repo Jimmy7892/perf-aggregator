@@ -1,32 +1,11 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 import ccxt from 'ccxt';
-
-export interface UserTrade {
-  userId: string;
-  symbol: string;
-  side: 'buy' | 'sell';
-  amount: number;
-  price: number;
-  fee: number;
-  timestamp: number;
-  exchange: string;
-}
-
-export interface UserConfig {
-  userId: string;
-  exchange: string;
-  apiKey: string;
-  secret: string;
-  sandbox?: boolean;
-  accountType?: 'spot' | 'futures' | 'margin'; // Type de compte à surveiller
-  apiInterval?: number; // Intervalle en ms pour les appels API
-  maxRetries?: number;
-}
+import { UserTrade, UserConfig } from './types/index.js';
 
 export class ExchangeConnector extends EventEmitter {
   private exchanges = new Map<string, any>();
   private userConfigs = new Map<string, UserConfig>();
-  private pollingIntervals = new Map<string, NodeJS.Timeout>();
+  private pollingIntervals = new Map<string, any>();
   private isRunning = false;
   private lastTradeTimestamps = new Map<string, number>();
 

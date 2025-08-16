@@ -12,11 +12,10 @@ Client → Secure Enclave (direct)
 ```
 
 ### **Components**
-- **Secure Enclave** : Port 3000 - **Complete Perf-Aggregator** in enclave
-- **Main Service** : Port 5000 - Public interface (optional)
+- **Performance Aggregator Server** : Port 3000 - Complete service in secure environment
 - **ExchangeConnector** : Trading data collection from exchanges (adaptive polling)
 - **TradeAggregator** : Real-time performance metrics calculation
-- **TEE Enclave** : Secure processing of all sensitive data
+- **Secure Client** : End-to-end encrypted communication
 - **ED25519 Signature** : Cryptographic integrity of aggregations
 - **Auto-detection** : All financial instruments automatically detected
 
@@ -71,27 +70,26 @@ pnpm build
 pnpm start
 ```
 
+**Single unified server** - no separate enclave service needed.
+
 ## Docker
 
 `ash
 docker build -t perf-aggregator:latest .
-docker run -p 5000:5000 -p 5010:5010 \
-  -e AGGREGATOR_BACKEND_URL=http://host.docker.internal:3010 \
-  -e AGGREGATOR_PRIVATE_KEY=/app/ed25519_private.key \
-  --mount type=bind,source=/abs/path/ed25519_private.key,target=/app/ed25519_private.key,readonly \
+docker run -p 3000:3000 \
+  -e ENCLAVE_PORT=3000 \
+  -e ENCLAVE_HOST=0.0.0.0 \
   perf-aggregator:latest
 `
 
 ## Service API
 
-HTTP:
-- GET /health
-- POST /jobs
-- GET /jobs/:jobId
-- POST /jobs/:jobId/process
-
-WebSocket:
-- ws://localhost:{AGGREGATOR_WS_PORT}/ws/{jobId}
+### Secure Enclave Endpoints:
+- GET `/attestation/quote` - Get enclave attestation
+- POST `/enclave/submit_key` - Submit encrypted credentials
+- GET `/enclave/metrics/:sessionId` - Get performance metrics
+- GET `/enclave/summary/:sessionId` - Get summary metrics
+- POST `/enclave/cleanup` - Cleanup expired sessions
 
 Trade format:
 `json

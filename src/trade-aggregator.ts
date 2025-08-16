@@ -1,35 +1,9 @@
-import { UserTrade } from './exchange-connector.js';
-
-export interface TradeMetrics {
-  userId: string;
-  symbol: string;
-  periodStart: string;
-  periodEnd: string;
-  
-  // Métriques demandées
-  volume: number;           // Volume total en USD
-  trades: number;           // Nombre de trades
-  returnPct: number;        // Return % basé sur trades individuels
-  returnUsd: number;        // Return $ basé sur trades individuels
-  
-  // Détails pour calculs
-  totalFees: number;        // Frais totaux
-  realizedPnL: number;      // P&L réalisé
-  totalTrades: number;      // Nombre total de trades
-}
-
-export interface TradePair {
-  buyTrade: UserTrade;
-  sellTrade: UserTrade;
-  returnPct: number;
-  returnUsd: number;
-  fees: number;
-}
+import { UserTrade, TradePair, PerformanceMetrics } from './types/index.js';
 
 export class TradeAggregator {
   private userTrades = new Map<string, UserTrade[]>(); // userId_symbol -> trades[]
   private tradePairs = new Map<string, TradePair[]>(); // userId_symbol -> trade pairs
-  private metrics = new Map<string, TradeMetrics>();   // userId_symbol -> metrics
+  private metrics = new Map<string, PerformanceMetrics>();   // userId_symbol -> metrics
   
   constructor() {}
 
@@ -53,22 +27,23 @@ export class TradeAggregator {
     const trades = this.userTrades.get(key) || [];
     const pairs: TradePair[] = [];
     
-    // Trier les trades par timestamp
+    // Sort trades by timestamp
     trades.sort((a, b) => a.timestamp - b.timestamp);
     
-    let buyTrades: UserTrade[] = [];
-    let sellTrades: UserTrade[] = [];
+    // Create copies to avoid modifying original trades
+    const buyTrades: (UserTrade & { remainingAmount: number })[] = [];
+    const sellTrades: (UserTrade & { remainingAmount: number })[] = [];
     
-    // Séparer les trades buy et sell
+    // Separate buy and sell trades
     for (const trade of trades) {
       if (trade.side === 'buy') {
-        buyTrades.push(trade);
+        buyTrades.push({ ...trade, remainingAmount: trade.amount });
       } else {
-        sellTrades.push(trade);
+        sellTrades.push({ ...trade, remainingAmount: trade.amount });
       }
     }
     
-    // Former des paires buy/sell (FIFO)
+    // Form buy/sell pairs (FIFO)
     let buyIndex = 0;
     let sellIndex = 0;
     
@@ -76,38 +51,42 @@ export class TradeAggregator {
       const buyTrade = buyTrades[buyIndex];
       const sellTrade = sellTrades[sellIndex];
       
-      // Vérifier que le sell trade vient après le buy trade
+      if (!buyTrade || !sellTrade) break;
+      
+      // Check that sell trade comes after buy trade
       if (sellTrade.timestamp > buyTrade.timestamp) {
-        const buyAmount = buyTrade.amount;
-        const sellAmount = sellTrade.amount;
+        const buyAmount = buyTrade.remainingAmount;
+        const sellAmount = sellTrade.remainingAmount;
         const matchedAmount = Math.min(buyAmount, sellAmount);
         
-        // Calculer le return pour cette paire
-        const buyValue = matchedAmount * buyTrade.price;
-        const sellValue = matchedAmount * sellTrade.price;
-        const totalFees = (buyTrade.fee * matchedAmount / buyTrade.amount) + 
-                         (sellTrade.fee * matchedAmount / sellTrade.amount);
+        if (matchedAmount > 0) {
+          // Calculate return for this pair
+          const buyValue = matchedAmount * buyTrade.price;
+          const sellValue = matchedAmount * sellTrade.price;
+          const totalFees = (buyTrade.fee * matchedAmount / buyTrade.amount) + 
+                           (sellTrade.fee * matchedAmount / sellTrade.amount);
+          
+          const returnUsd = sellValue - buyValue - totalFees;
+          const returnPct = buyValue > 0 ? (returnUsd / buyValue) * 100 : 0;
+          
+          pairs.push({
+            buyTrade,
+            sellTrade,
+            returnPct,
+            returnUsd,
+            fees: totalFees
+          });
+          
+          // Reduce remaining amounts
+          buyTrade.remainingAmount -= matchedAmount;
+          sellTrade.remainingAmount -= matchedAmount;
+        }
         
-        const returnUsd = sellValue - buyValue - totalFees;
-        const returnPct = (returnUsd / buyValue) * 100;
-        
-        pairs.push({
-          buyTrade,
-          sellTrade,
-          returnPct,
-          returnUsd,
-          fees: totalFees
-        });
-        
-        // Réduire les montants restants
-        buyTrade.amount -= matchedAmount;
-        sellTrade.amount -= matchedAmount;
-        
-        // Passer au trade suivant si épuisé
-        if (buyTrade.amount <= 0) buyIndex++;
-        if (sellTrade.amount <= 0) sellIndex++;
+        // Move to next trade if exhausted
+        if (buyTrade.remainingAmount <= 0) buyIndex++;
+        if (sellTrade.remainingAmount <= 0) sellIndex++;
       } else {
-        // Le sell trade est avant le buy trade, passer au sell suivant
+        // Sell trade is before buy trade, move to next sell
         sellIndex++;
       }
     }
@@ -134,32 +113,31 @@ export class TradeAggregator {
     
     const returnPct = totalBuyValue > 0 ? (realizedPnL / totalBuyValue) * 100 : 0;
     
-    // Créer les métriques
-    const metrics: TradeMetrics = {
-      userId: trades[0].userId,
-      symbol: trades[0].symbol,
-      periodStart: new Date(Math.min(...trades.map(t => t.timestamp))).toISOString(),
-      periodEnd: new Date(Math.max(...trades.map(t => t.timestamp))).toISOString(),
+    // Create metrics
+    const metrics: PerformanceMetrics = {
       volume,
       trades: trades.length,
       returnPct,
       returnUsd: realizedPnL,
       totalFees,
       realizedPnL,
-      totalTrades: trades.length
+      periodStart: new Date(Math.min(...trades.map(t => t.timestamp))).toISOString(),
+      periodEnd: new Date(Math.max(...trades.map(t => t.timestamp))).toISOString()
     };
     
     this.metrics.set(key, metrics);
   }
 
-  getMetrics(userId: string, symbol: string): TradeMetrics | undefined {
+  getMetrics(userId: string, symbol: string): PerformanceMetrics | undefined {
     return this.metrics.get(`${userId}_${symbol}`);
   }
 
-  getAllUserMetrics(userId: string): TradeMetrics[] {
-    const result: TradeMetrics[] = [];
+  getAllUserMetrics(userId: string): PerformanceMetrics[] {
+    const result: PerformanceMetrics[] = [];
     for (const [key, metrics] of this.metrics) {
-      if (metrics.userId === userId) {
+      // Extract userId from key (format: userId_symbol)
+      const keyUserId = key.split('_')[0];
+      if (keyUserId === userId) {
         result.push(metrics);
       }
     }

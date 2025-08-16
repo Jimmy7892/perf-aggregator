@@ -6,7 +6,6 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/src/server.js",
-    "start:enclave": "node dist/src/enclave-server.js",
     "migrate": "node dist/src/migrate.js",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -19,7 +18,6 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
     "prestart": "npm run build",
-    "prestart:enclave": "npm run build",
     "premigrate": "npm run build"
   },
   "dependencies": {
