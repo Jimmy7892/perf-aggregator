@@ -1,10 +1,10 @@
-# Architecture Enclave - Perf-Aggregator Complet
+# Enclave Architecture - Complete Perf-Aggregator
 
-## 🎯 **Concept clé**
+## **Key Concept**
 
-**Perf-Aggregator ENTIER** fonctionne dans l'enclave sécurisée. Il n'y a pas de séparation entre "enclave" et "service principal" - tout le service est dans l'enclave !
+**Perf-Aggregator COMPLETE** runs in the secure enclave. There is no separation between "enclave" and "main service" - the entire trading performance aggregation service is in the enclave!
 
-## 🏗️ **Architecture réelle**
+## **Real Architecture**
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -15,7 +15,7 @@
 │  │  ┌─────────────────────────────────────────────────────┐   │ │
 │  │  │              ExchangeConnector                      │   │ │
 │  │  │  • Connexion aux exchanges (Binance, etc.)         │   │ │
-│  │  │  • Polling adaptatif des trades                    │   │ │
+│  │  │  • Polling adaptatif des données de trading        │   │ │
 │  │  │  • Gestion des credentials déchiffrés              │   │ │
 │  │  └─────────────────────────────────────────────────────┘   │ │
 │  │                                                             │ │
@@ -52,76 +52,76 @@
                     └─────────────────────┘
 ```
 
-## 🔄 **Flux de données**
+## **Data Flow**
 
-### **1. Enregistrement utilisateur**
+### **1. User Registration**
 ```
-Client → Enclave (credentials chiffrés)
-Enclave → Déchiffre et stocke credentials
-Enclave → Crée session temporaire
-Enclave → Retourne session ID
-```
-
-### **2. Collecte des trades**
-```
-Enclave → Se connecte aux exchanges
-Enclave → Collecte trades via API REST
-Enclave → Agrège en temps réel
-Enclave → Calcule métriques
+Client → Enclave (encrypted credentials)
+Enclave → Decrypts and stores credentials
+Enclave → Creates temporary session
+Enclave → Returns session ID
 ```
 
-### **3. Consultation des résultats**
+### **2. Trade Collection**
+```
+Enclave → Connects to exchanges
+Enclave → Collects trades via REST API
+Enclave → Aggregates in real-time
+Enclave → Calculates metrics
+```
+
+### **3. Results Consultation**
 ```
 Client → Enclave (session ID)
-Enclave → Vérifie session valide
-Enclave → Retourne métriques
+Enclave → Verifies valid session
+Enclave → Returns metrics
 ```
 
-## 🛡️ **Sécurité**
+## **Security**
 
-### **Tout est dans l'enclave**
-- ✅ **ExchangeConnector** : Dans l'enclave
-- ✅ **TradeAggregator** : Dans l'enclave
-- ✅ **Credentials** : Déchiffrés dans l'enclave
-- ✅ **Métriques** : Calculées dans l'enclave
-- ✅ **Sessions** : Gérées dans l'enclave
+### **Everything is in the enclave**
+- **ExchangeConnector** : In the enclave
+- **TradeAggregator** : In the enclave
+- **Credentials** : Decrypted in the enclave
+- **Metrics** : Calculated in the enclave
+- **Sessions** : Managed in the enclave
 
-### **Client externe**
-- 🔒 **Envoi** : Credentials chiffrés
-- 🔒 **Réception** : Métriques via session
-- 🔒 **Pas d'accès** : Aux données sensibles
+### **External Client**
+- **Send** : Encrypted credentials
+- **Receive** : Metrics via session
+- **No access** : To sensitive data
 
-## 🚀 **Déploiement**
+## **Deployment**
 
-### **Enclave unique (Production)**
+### **Single Enclave (Production)**
 ```bash
-# L'enclave contient TOUT Perf-Aggregator
+# The enclave contains ALL of Perf-Aggregator
 ENCLAVE_PORT=3000
 ENCLAVE_HOST=0.0.0.0
 
-# Démarrage
+# Startup
 node src/enclave-server.js
 ```
 
-### **Pas de service séparé**
-- ❌ **Pas de serveur principal** nécessaire
-- ❌ **Pas de proxy** nécessaire
-- ✅ **Enclave unique** = Perf-Aggregator complet
+### **No Separate Service**
+- **No main server** required
+- **No proxy** required
+- **Single enclave** = Complete Perf-Aggregator
 
-## 📊 **Avantages**
+## **Benefits**
 
-### **Sécurité maximale**
-- 🔒 **Zero exposition** des données sensibles
-- 🔒 **Isolation complète** dans l'enclave
-- 🔒 **Chiffrement end-to-end** des communications
+### **Maximum Security**
+- **Zero exposure** of sensitive data
+- **Complete isolation** in the enclave
+- **End-to-end encryption** of communications
 
-### **Simplicité**
-- 🎯 **Un seul service** à déployer
-- 🎯 **Architecture claire** : tout dans l'enclave
-- 🎯 **Maintenance simplifiée**
+### **Simplicity**
+- **Single service** to deploy
+- **Clear architecture** : everything in the enclave
+- **Simplified maintenance**
 
-## 🎯 **Résumé**
+## **Summary**
 
-**Perf-Aggregator = Enclave sécurisée**
+**Perf-Aggregator = Secure Enclave**
 
-Il n'y a pas de "service principal" et "enclave séparée". Tout le service Perf-Aggregator fonctionne dans l'enclave sécurisée, garantissant une protection maximale des données utilisateur.
+There is no "main service" and "separate enclave". The entire Perf-Aggregator service runs in the secure enclave, ensuring maximum protection of user data.

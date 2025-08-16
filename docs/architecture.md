@@ -1,12 +1,12 @@
-# Architecture Sécurisée - Perf-Aggregator
+# Secure Architecture - Perf-Aggregator
 
-## 🎯 **Problème résolu**
+## **Problem Solved**
 
-Les utilisateurs ne doivent **jamais** exposer leurs API keys à votre serveur principal. L'architecture sécurisée permet une communication directe avec l'enclave.
+Users must **never** expose their trading credentials to your infrastructure. The secure architecture enables direct communication with the enclave, ensuring protection of sensitive data.
 
-## 🔐 **Architecture recommandée**
+## **Recommended Architecture**
 
-### **Flux sécurisé**
+### **Secure Flow**
 ```
 ┌─────────────┐    Chiffré     ┌─────────────────────────────────────────┐    API REST    ┌─────────────┐
 │   Client    │ ──────────────► │           ENCLAVE SÉCURISÉE             │ ──────────────► │  Exchange   │
@@ -15,42 +15,42 @@ Les utilisateurs ne doivent **jamais** exposer leurs API keys à votre serveur p
        │                        │  │                                     │ │
        │                        │  │  • ExchangeConnector               │ │
        ▼                        │  │  • TradeAggregator                 │ │
-┌─────────────┐                 │  │  • Métriques calculées             │ │
-│ API Keys    │                 │  │  • Credentials déchiffrés          │ │
-│ Chiffrées   │                 │  │  • Sessions utilisateurs           │ │
+┌─────────────┐                 │  │  • Métriques de performance        │ │
+│ Credentials │                 │  │  • Credentials déchiffrés          │ │
+│ Chiffrés    │                 │  │  • Sessions utilisateurs           │ │
 └─────────────┘                 │  │  • API REST vers exchanges         │ │
                                 │  └─────────────────────────────────────┘ │
                                 └─────────────────────────────────────────┘
 ```
 
-### **Composants**
+### **Components**
 
-#### **1. Client sécurisé**
+#### **1. Secure Client**
 - **PowerShell** : `register-user.ps1 -Secure`
 - **JavaScript** : `SecureClient` class
-- **Chiffrement** : X25519 + AES-GCM
-- **Attestation** : Vérification de l'enclave
+- **Encryption** : X25519 + AES-GCM
+- **Attestation** : Enclave verification
 
-#### **2. Enclave (Port 3000) - Perf-Aggregator complet**
+#### **2. Enclave (Port 3000) - Complete Perf-Aggregator**
 - **TEE** : Trusted Execution Environment
-- **Perf-Aggregator** : Service complet dans l'enclave
-- **ExchangeConnector** : Collecte des trades depuis les exchanges
-- **TradeAggregator** : Calcul des métriques en temps réel
-- **Credentials** : Déchiffrement et stockage sécurisé
-- **Sessions** : Gestion temporaire des sessions utilisateurs
-- **API** : Endpoints pour consultation des métriques
+- **Perf-Aggregator** : Complete service in enclave
+- **ExchangeConnector** : Trading data collection from exchanges
+- **TradeAggregator** : Real-time performance metrics calculation
+- **Credentials** : Secure decryption and storage
+- **Sessions** : Temporary user session management
+- **API** : Endpoints for performance metrics consultation
 
-#### **3. Service principal (Port 5000) - Optionnel**
-- **Interface publique** : Pour les utilisateurs non-sécurisés
-- **Proxy** : Redirection vers l'enclave
-- **Logs** : Audit et monitoring
+#### **3. Main Service (Port 5000) - Optional**
+- **Public Interface** : For non-secure users
+- **Proxy** : Redirection to enclave
+- **Logs** : Audit and monitoring
 
-## 🚀 **Implémentation**
+## **Implementation**
 
-### **1. Enregistrement sécurisé**
+### **1. Secure Registration**
 
 ```powershell
-# PowerShell - Recommandé
+# PowerShell - Recommended
 .\register-user.ps1 -UserId "trader-john" `
                     -Exchange "binance" `
                     -ApiKey "abc123..." `
@@ -60,7 +60,7 @@ Les utilisateurs ne doivent **jamais** exposer leurs API keys à votre serveur p
 ```
 
 ```javascript
-// JavaScript - Recommandé
+// JavaScript - Recommended
 const client = new SecureClient({
   enclaveUrl: 'https://perf-aggregator.com:3000',
   userId: 'trader-john',
@@ -72,124 +72,124 @@ const client = new SecureClient({
 await client.register();
 ```
 
-### **2. Récupération des métriques**
+### **2. Metrics Retrieval**
 
 ```powershell
-# Via session sécurisée
+# Via secure session
 $sessionId = "session_1234567890_abc123"
 $metrics = Invoke-RestMethod -Uri "https://perf-aggregator.com:3000/enclave/summary/$sessionId"
 ```
 
 ```javascript
-// Via client sécurisé
+// Via secure client
 const metrics = await client.getMetrics();
 const summary = await client.getSummary();
 ```
 
-## 🔒 **Sécurité**
+## **Security**
 
-### **Avantages**
-- ✅ **Zero exposition** des API keys au serveur principal
-- ✅ **Chiffrement end-to-end** des credentials
-- ✅ **Sessions temporaires** avec TTL automatique
-- ✅ **Attestation cryptographique** de l'enclave
-- ✅ **Isolation** des données sensibles
+### **Benefits**
+- **Zero exposure** of credentials to your infrastructure
+- **End-to-end encryption** of sensitive data
+- **Temporary sessions** with automatic expiration
+- **Cryptographic attestation** of enclave
+- **Isolation** of sensitive data
 
-### **Protection contre**
-- ❌ **Man-in-the-middle** : Chiffrement TLS + attestation
-- ❌ **Credential theft** : Chiffrement des API keys
-- ❌ **Session hijacking** : Sessions temporaires
-- ❌ **Data leakage** : Isolation TEE
+### **Protection Against**
+- **Man-in-the-middle** : TLS encryption + attestation
+- **Credential theft** : API key encryption
+- **Session hijacking** : Temporary sessions
+- **Data leakage** : TEE isolation
 
-## 📊 **Métriques de sécurité**
+## **Security Metrics**
 
-### **Chiffrement**
-- **Algorithme** : X25519 ECDH + AES-GCM
-- **Taille clé** : 256 bits
-- **Nonce** : 96 bits aléatoire
+### **Encryption**
+- **Algorithm** : X25519 ECDH + AES-GCM
+- **Key size** : 256 bits
+- **Nonce** : 96 bits random
 
 ### **Sessions**
-- **Durée** : 24h par défaut (configurable)
-- **Nettoyage** : Automatique toutes les heures
-- **Renouvellement** : Nouvelle session requise
+- **Duration** : 24h default (configurable)
+- **Cleanup** : Automatic every hour
+- **Renewal** : New session required
 
 ### **Attestation**
 - **Type** : SGX Quote
-- **Vérification** : Cryptographique
-- **Renouvellement** : À chaque connexion
+- **Verification** : Cryptographic
+- **Renewal** : At each connection
 
-## 🛠️ **Déploiement**
+## **Deployment**
 
 ### **Enclave (Production)**
 ```bash
-# Variables d'environnement
+# Environment variables
 ENCLAVE_PORT=3000
 ENCLAVE_HOST=0.0.0.0
 ENCLAVE_PRIVATE_KEY=/path/to/private.pem
 ENCLAVE_PUBLIC_KEY=/path/to/public.pem
 
-# Démarrage
+# Startup
 node src/enclave-server.js
 ```
 
-### **Service principal (Optionnel)**
+### **Main Service (Optional)**
 ```bash
-# Variables d'environnement
+# Environment variables
 PORT=5000
 HOST=0.0.0.0
 BACKEND_URL=http://localhost:3000
 
-# Démarrage
+# Startup
 node src/server.js
 ```
 
-## 🔄 **Workflow complet**
+## **Complete Workflow**
 
-### **1. Enregistrement**
-1. Client récupère l'attestation de l'enclave
-2. Client chiffre ses credentials
-3. Client envoie l'enveloppe chiffrée à l'enclave
-4. Enclave déchiffre et valide les credentials
-5. Enclave crée une session temporaire
-6. Enclave retourne un session ID
+### **1. Registration**
+1. Client retrieves enclave attestation
+2. Client encrypts credentials
+3. Client sends encrypted envelope to enclave
+4. Enclave decrypts and validates credentials
+5. Enclave creates temporary session
+6. Enclave returns session ID
 
-### **2. Collecte et traitement des données**
-1. **Enclave** utilise les credentials pour se connecter à l'exchange
-2. **Enclave** collecte les trades via API REST (ExchangeConnector)
-3. **Enclave** agrège les données en temps réel (TradeAggregator)
-4. **Enclave** calcule les métriques de performance (volume, return %, etc.)
-5. **Enclave** stocke les résultats de manière sécurisée
+### **2. Data Collection and Processing**
+1. **Enclave** uses credentials to connect to exchange
+2. **Enclave** collects trading data via REST API (ExchangeConnector)
+3. **Enclave** aggregates data in real-time (TradeAggregator)
+4. **Enclave** calculates performance metrics (volume, return %, etc.)
+5. **Enclave** stores results securely
 
-### **3. Récupération des résultats**
-1. Client utilise son session ID pour récupérer les métriques
-2. Enclave vérifie la validité de la session
-3. Enclave retourne les données agrégées
-4. Session expire automatiquement après TTL
+### **3. Results Retrieval**
+1. Client uses session ID to retrieve metrics
+2. Enclave verifies session validity
+3. Enclave returns aggregated data
+4. Session expires automatically after TTL
 
-## 📈 **Avantages business**
+## **Business Benefits**
 
-### **Pour les utilisateurs**
-- 🔒 **Confiance maximale** : API keys jamais exposées
-- ⚡ **Performance** : Communication directe avec l'enclave
-- 🛡️ **Transparence** : Attestation cryptographique
-- 🔄 **Flexibilité** : Sessions temporaires configurables
+### **For Users**
+- **Maximum trust** : Credentials never exposed
+- **Performance** : Direct communication with enclave
+- **Transparency** : Cryptographic attestation
+- **Flexibility** : Configurable temporary sessions
 
-### **Pour les opérateurs**
-- 🚫 **Responsabilité réduite** : Pas d'accès aux credentials
-- 📊 **Audit trail** : Logs cryptographiques
-- 🔧 **Maintenance simplifiée** : Isolation des composants
-- 🎯 **Conformité** : Architecture zero-trust
+### **For Operators**
+- **Reduced liability** : No access to credentials
+- **Audit trail** : Cryptographic logs
+- **Simplified maintenance** : Component isolation
+- **Compliance** : Zero-trust architecture
 
-## 🚨 **Recommandations**
+## **Recommendations**
 
 ### **Production**
-- ✅ Utilisez **toujours** l'enregistrement sécurisé
-- ✅ Configurez des **TTL courts** pour les sessions
-- ✅ Implémentez la **rotation des clés**
-- ✅ Activez le **monitoring des sessions**
+- Always use secure registration
+- Configure short TTL for sessions
+- Implement key rotation
+- Enable session monitoring
 
-### **Développement**
-- ⚠️ Utilisez le **sandbox** pour les tests
-- ⚠️ Limitez les **permissions API**
-- ⚠️ Testez la **récupération de session**
-- ⚠️ Validez l'**attestation de l'enclave**
+### **Development**
+- Use sandbox for testing
+- Limit API permissions
+- Test session retrieval
+- Validate enclave attestation

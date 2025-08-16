@@ -1,70 +1,70 @@
-﻿# Aggregator Service
+﻿# Perf-Aggregator - Performance Trading Aggregation Service
 
-Service dagrégation temps réel: collecte de trades via API REST optimisée, agrégation en mémoire, signature ED25519 et envoi vers une API dingestion compatible (vendorneutral).
+Professional real-time trading performance aggregation service: secure collection of trading data via optimized REST API, in-memory aggregation, ED25519 cryptographic signature, and generation of performance metrics compliant with financial standards.
 
 ## Architecture
 
-### **Sécurité maximale - Communication directe avec l'enclave**
+### **Secure Architecture - Direct Enclave Communication**
 ```
-User → Enclave (directement)
-     ↑
-   API Keys chiffrées uniquement
+Client → Secure Enclave (direct)
+       ↑
+     Encrypted credentials only
 ```
 
-### **Composants**
-- **Enclave sécurisée** : Port 3000 - **Perf-Aggregator complet** dans l'enclave
-- **Service principal** : Port 5000 - Interface publique (optionnel)
-- **ExchangeConnector** : Collecte des trades depuis les exchanges (polling adaptatif)
-- **TradeAggregator** : Calcul des métriques en temps réel
-- **TEE Enclave** : Traitement sécurisé de toutes les données
-- **Signature ED25519** : Intégrité cryptographique des agrégations
-- **Détection automatique** : Tous les symboles tradés détectés automatiquement
+### **Components**
+- **Secure Enclave** : Port 3000 - **Complete Perf-Aggregator** in enclave
+- **Main Service** : Port 5000 - Public interface (optional)
+- **ExchangeConnector** : Trading data collection from exchanges (adaptive polling)
+- **TradeAggregator** : Real-time performance metrics calculation
+- **TEE Enclave** : Secure processing of all sensitive data
+- **ED25519 Signature** : Cryptographic integrity of aggregations
+- **Auto-detection** : All financial instruments automatically detected
 
-### **Avantages de sécurité**
-- ✅ **Zero exposition** des API keys à votre serveur principal
-- ✅ **Chiffrement end-to-end** des credentials
-- ✅ **Sessions temporaires** avec TTL automatique
-- ✅ **Attestation cryptographique** de l'enclave
+### **Security Benefits**
+- **Zero exposure** of credentials to your infrastructure
+- **End-to-end encryption** of sensitive data
+- **Temporary sessions** with automatic expiration
+- **Cryptographic attestation** of enclave
 
 ## Configuration
 
-### Variables d'environnement
-- AGGREGATOR_PORT (défaut: 5000)
-- AGGREGATOR_WS_PORT (défaut: 5010)
-- AGGREGATOR_BACKEND_URL (URL de lAPI dingestion; ex: http://localhost:3010)
-- AGGREGATOR_PRIVATE_KEY (chemin de la clé privée ED25519 montée en volume)
+### Environment Variables
+- AGGREGATOR_PORT (default: 5000)
+- AGGREGATOR_WS_PORT (default: 5010)
+- AGGREGATOR_BACKEND_URL (ingestion API URL; ex: http://localhost:3010)
+- AGGREGATOR_PRIVATE_KEY (path to ED25519 private key mounted as volume)
 
-### Configuration des exchanges
-- `apiInterval` : Intervalle entre les appels API (défaut: 60000ms)
-- `maxRetries` : Nombre de tentatives en cas d'échec (défaut: 3)
-- `accountType` : Type de compte à surveiller ('spot', 'futures', 'margin')
-- `sandbox` : Utiliser l'environnement de test
-- **Détection automatique** : Tous les symboles tradés sont détectés automatiquement
+### Exchange Configuration
+- `apiInterval` : Interval between API calls (default: 60000ms)
+- `maxRetries` : Number of retry attempts on failure (default: 3)
+- `accountType` : Account type to monitor ('spot', 'futures', 'margin')
+- `sandbox` : Use test environment
+- **Auto-detection** : All financial instruments are automatically detected
 
-## Déploiement
+## Deployment
 
-### **Pour les utilisateurs (clients) - RECOMMANDÉ**
+### **For Users (Clients) - RECOMMENDED**
 
-#### **🔐 Enregistrement sécurisé (recommandé)**
-Communication directe avec l'enclave - **ZERO exposition** des API keys :
+#### **Secure Registration (Recommended)**
+Direct communication with enclave - **ZERO exposure** of credentials:
 
 ```powershell
-# PowerShell - Communication directe avec l'enclave
+# PowerShell - Direct communication with enclave
 .\register-user.ps1 -UserId "trader-john" -Exchange "binance" -ApiKey "abc123..." -Secret "xyz789..." -ServiceUrl "https://perf-aggregator.com" -Secure
 
-# JavaScript - Client sécurisé
+# JavaScript - Secure client
 node examples/secure-client-example.js
 ```
 
-#### **⚠️ Enregistrement simple (déconseillé)**
-Via le serveur principal - API keys exposées :
+#### **Simple Registration (Not Recommended)**
+Via main server - credentials exposed:
 
 ```powershell
-# PowerShell - Via serveur principal (moins sécurisé)
+# PowerShell - Via main server (less secure)
 .\register-user.ps1 -UserId "trader-john" -Exchange "binance" -ApiKey "abc123..." -Secret "xyz789..." -ServiceUrl "https://perf-aggregator.com"
 ```
 
-### **Pour les développeurs (serveur)**
+### **For Developers (Server)**
 ```bash
 pnpm i
 pnpm build
@@ -82,7 +82,7 @@ docker run -p 5000:5000 -p 5010:5010 \
   perf-aggregator:latest
 `
 
-## API du service
+## Service API
 
 HTTP:
 - GET /health
@@ -93,16 +93,16 @@ HTTP:
 WebSocket:
 - ws://localhost:{AGGREGATOR_WS_PORT}/ws/{jobId}
 
-Format trade:
+Trade format:
 `json
 {  type: trade, data: { symbol: BTCUSDT, price: 50000, size: 0.1, side: buy, timestamp: 1640995200000, fee: 1.5 } }
 `
 
-## Contrat dingestion (backend cible)
+## Ingestion Contract (target backend)
 
-- Méthode: POST {AGGREGATOR_BACKEND_URL}/api/ingest
-- ContentType: pplication/json
-- Corps: objet signé ED25519, par exemple:
+- Method: POST {AGGREGATOR_BACKEND_URL}/api/ingest
+- ContentType: application/json
+- Body: ED25519 signed object, for example:
 
 `json
 {
