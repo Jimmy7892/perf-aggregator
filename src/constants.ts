@@ -10,7 +10,7 @@ export const DEFAULT_CONFIG = {
   DEFAULT_TTL_SECONDS: 86400, // 1 day
   RATE_LIMIT_MAX: 100,
   RATE_LIMIT_WINDOW: 900000, // 15 minutes
-  REQUEST_SIZE_LIMIT: 1024 * 1024, // 1MB
+  REQUEST_SIZE_LIMIT: 1024 * 1024 // 1MB
 } as const;
 
 // Crypto constants
@@ -21,14 +21,14 @@ export const CRYPTO_CONFIG = {
   HASH_ALGORITHM: 'SHA-256',
   NONCE_SIZE: 12,
   TAG_SIZE: 16,
-  SALT_SIZE: 16,
+  SALT_SIZE: 16
 } as const;
 
 // Database constants
 export const DB_CONFIG = {
   CONNECTION_TIMEOUT: 2000,
   IDLE_TIMEOUT: 30000,
-  MAX_CONNECTIONS: 20,
+  MAX_CONNECTIONS: 20
 } as const;
 
 // Validation patterns
@@ -36,7 +36,7 @@ export const VALIDATION_PATTERNS = {
   BASE64: /^[A-Za-z0-9+/]+=*$/,
   UUID: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
   SESSION_ID: /^[a-f0-9]{32}$/,
-  EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+  EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 } as const;
 
 // TTL constants
@@ -44,14 +44,14 @@ export const TTL = {
   MIN_SECONDS: 300, // 5 minutes
   MAX_SECONDS: 604800, // 7 days
   DEFAULT_SECONDS: 86400, // 1 day
-  CLEANUP_INTERVAL: 5 * 60 * 1000, // 5 minutes
+  CLEANUP_INTERVAL: 5 * 60 * 1000 // 5 minutes
 } as const;
 
 // Log levels
 export const LOG_LEVELS = {
   INFO: 'INFO',
   WARN: 'WARN',
-  ERROR: 'ERROR',
+  ERROR: 'ERROR'
 } as const;
 
 // Session statuses
@@ -59,34 +59,34 @@ export const SESSION_STATUS = {
   PENDING: 'pending',
   ACTIVE: 'active',
   REVOKED: 'revoked',
-  DONE: 'done',
+  DONE: 'done'
 } as const;
 
 // User statuses
 export const USER_STATUS = {
   ACTIVE: 'active',
   SUSPENDED: 'suspended',
-  DELETED: 'deleted',
+  DELETED: 'deleted'
 } as const;
 
 // Security headers
 export const SECURITY_HEADERS = {
   CSP_DIRECTIVES: {
-    defaultSrc: ["'self'"],
-    scriptSrc: ["'self'"],
-    styleSrc: ["'self'", "'unsafe-inline'"],
-    imgSrc: ["'self'", "data:", "https:"],
-    connectSrc: ["'self'"],
-    fontSrc: ["'self'"],
-    objectSrc: ["'none'"],
-    mediaSrc: ["'self'"],
-    frameSrc: ["'none'"],
+    defaultSrc: ['\'self\''],
+    scriptSrc: ['\'self\''],
+    styleSrc: ['\'self\'', '\'unsafe-inline\''],
+    imgSrc: ['\'self\'', 'data:', 'https:'],
+    connectSrc: ['\'self\''],
+    fontSrc: ['\'self\''],
+    objectSrc: ['\'none\''],
+    mediaSrc: ['\'self\''],
+    frameSrc: ['\'none\'']
   },
   HSTS: {
     maxAge: 31536000,
     includeSubDomains: true,
-    preload: true,
-  },
+    preload: true
+  }
 } as const;
 
 // Error messages
@@ -102,5 +102,5 @@ export const ERROR_MESSAGES = {
   VALIDATION_FAILED: 'Validation failed',
   RATE_LIMIT_EXCEEDED: 'Rate limit exceeded',
   REQUEST_TOO_LARGE: 'Request too large',
-  INTERNAL_ERROR: 'Internal server error',
+  INTERNAL_ERROR: 'Internal server error'
 } as const;

@@ -89,7 +89,7 @@ export class SecureClient {
     }
 
     const response = await fetch(`${this.config.enclaveUrl}/enclave/metrics/${this.sessionId}`);
-    
+
     if (!response.ok) {
       throw new Error(`Erreur récupération métriques: ${response.status} ${response.statusText}`);
     }
@@ -103,7 +103,7 @@ export class SecureClient {
     }
 
     const response = await fetch(`${this.config.enclaveUrl}/enclave/summary/${this.sessionId}`);
-    
+
     if (!response.ok) {
       throw new Error(`Erreur récupération résumé: ${response.status} ${response.statusText}`);
     }
@@ -113,7 +113,7 @@ export class SecureClient {
 
   private async getAttestation(): Promise<any> {
     const response = await fetch(`${this.config.enclaveUrl}/attestation/quote`);
-    
+
     if (!response.ok) {
       throw new Error(`Erreur attestation: ${response.status} ${response.statusText}`);
     }
@@ -124,9 +124,9 @@ export class SecureClient {
   private async encryptCredentials(credentials: any): Promise<any> {
     // En production, utiliser de vrais algorithmes de chiffrement
     // Ici on simule pour la démonstration
-    
+
     const credentialsJson = JSON.stringify(credentials);
-    
+
     return {
       ephemeral_pub: 'mock-ephemeral-key',
       nonce: 'mock-nonce',

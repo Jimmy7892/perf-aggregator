@@ -190,3 +190,11 @@ export interface AttestationVerificationResult {
   valid: boolean;
   error?: string;
 }
+
+// Aggregate result type for enclave operations
+export interface AggregateResult {
+  signature: string;
+  payload: PerformanceMetrics;
+  merkle_root: string;
+  timestamp: string;
+}

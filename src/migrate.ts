@@ -1,6 +1,6 @@
 /**
  * Database Migration Tool
- * 
+ *
  * SECURITY: Ensures database is properly configured with:
  * - Encrypted storage for sensitive data
  * - Proper RBAC roles
@@ -51,23 +51,23 @@ async function runMigrations() {
         console.log('⏭️  Migration 001_initial_schema.sql already applied, skipping');
       } else {
         console.log('📄 Applying migration: 001_initial_schema.sql');
-        
+
         // Execute migration in a transaction
         await client.query('BEGIN');
-        
+
         try {
           // Execute the migration SQL
           await client.query(migrationSQL);
-          
+
           // Record that migration was applied
           await client.query(
             'INSERT INTO migrations (filename) VALUES ($1)',
             ['001_initial_schema.sql']
           );
-          
+
           await client.query('COMMIT');
           console.log('✅ Migration 001_initial_schema.sql applied successfully');
-          
+
         } catch (error) {
           await client.query('ROLLBACK');
           throw error;

@@ -1,135 +1,313 @@
-# Exemples d'utilisation du service Perf-Aggregator
+# Performance Aggregator Service - Usage Examples
 
-## 🏠 **Environnements disponibles**
+## 🏠 **Available Environments**
 
-### **1. Service de développement (local)**
+### **1. Development Service (Local)**
 ```powershell
-.\register-user.ps1 -UserId "trader-john" -Exchange "binance" -ApiKey "abc123..." -Secret "xyz789..." -AccountType "spot" -ServiceUrl "http://localhost:5000"
+.\register-user.ps1 -UserId "trader-john" -Exchange "binance" -ApiKey "abc123..." -Secret "xyz789..." -AccountType "spot" -ServiceUrl "http://localhost:3000"
 ```
 
-### **2. Service de staging**
+### **2. Staging Service**
 ```powershell
 .\register-user.ps1 -UserId "trader-john" -Exchange "binance" -ApiKey "abc123..." -Secret "xyz789..." -AccountType "spot" -ServiceUrl "https://staging.perf-aggregator.com"
 ```
 
-### **3. Service de production (enclave sécurisé)**
+### **3. Production Service (Secure Enclave)**
 ```powershell
 .\register-user.ps1 -UserId "trader-john" -Exchange "binance" -ApiKey "abc123..." -Secret "xyz789..." -AccountType "spot" -ServiceUrl "https://perf-aggregator.com" -Secure
 ```
 
-## 🔐 **Enregistrement sécurisé (recommandé pour production)**
+## 🔐 **Secure Registration (Recommended for Production)**
 
-### **Avec TEE Enclave**
+### **With TEE Enclave**
 ```powershell
-# Enregistrement avec chiffrement et enclave sécurisé
-.\register-user.ps1 -UserId "trader-john" -Exchange "binance" -ApiKey "abc123..." -Secret "xyz789..." -AccountType "spot" -ServiceUrl "https://perf-aggregator.com" -Secure
+# Registration with encryption and secure enclave
+.\register-user.ps1 -UserId "institutional-trader-001" -Exchange "binance" -ApiKey "abc123..." -Secret "xyz789..." -AccountType "spot" -ServiceUrl "https://perf-aggregator.com" -Secure
 ```
 
-### **Différents types de comptes**
+### **Different Account Types**
 ```powershell
-# Compte spot
+# Spot trading account
 .\register-user.ps1 -UserId "trader-john" -Exchange "binance" -ApiKey "abc123..." -Secret "xyz789..." -AccountType "spot" -ServiceUrl "https://perf-aggregator.com"
 
-# Compte futures
+# Futures trading account
 .\register-user.ps1 -UserId "trader-john" -Exchange "binance" -ApiKey "abc123..." -Secret "xyz789..." -AccountType "futures" -ServiceUrl "https://perf-aggregator.com"
 
-# Compte margin
+# Margin trading account
 .\register-user.ps1 -UserId "trader-john" -Exchange "binance" -ApiKey "abc123..." -Secret "xyz789..." -AccountType "margin" -ServiceUrl "https://perf-aggregator.com"
 ```
 
-## 📊 **Consultation des métriques**
+## 📊 **Performance Metrics Consultation**
 
-### **Résumé global**
+### **Global Summary**
 ```powershell
-# PowerShell
-$summary = Invoke-RestMethod -Uri "https://perf-aggregator.com/users/trader-john/summary"
-Write-Host "Volume: $($summary.summary.totalVolume)"
-Write-Host "Return: $($summary.summary.totalReturnPct)%"
+# PowerShell - Session-based access
+$sessionId = "session_abc123_def456"
+$summary = Invoke-RestMethod -Uri "https://perf-aggregator.com/enclave/summary/$sessionId"
+Write-Host "Total Volume: $($summary.summary.totalVolume)"
+Write-Host "Total Return: $($summary.summary.totalReturnPct)%"
+Write-Host "Sharpe Ratio: $($summary.summary.sharpeRatio)"
 ```
 
-### **Métriques détaillées**
+### **Detailed Metrics**
 ```powershell
-# PowerShell
-$metrics = Invoke-RestMethod -Uri "https://perf-aggregator.com/users/trader-john/metrics"
+# PowerShell - Comprehensive analytics
+$sessionId = "session_abc123_def456"
+$metrics = Invoke-RestMethod -Uri "https://perf-aggregator.com/enclave/metrics/$sessionId"
 foreach ($metric in $metrics.metrics) {
-    Write-Host "$($metric.symbol): $($metric.returnPct)% return"
+    Write-Host "$($metric.symbol): $($metric.returnPct)% return, $($metric.volume) volume"
 }
 ```
 
-### **cURL**
+### **cURL Examples**
 ```bash
-# Résumé
-curl https://perf-aggregator.com/users/trader-john/summary
+# Get attestation quote
+curl https://perf-aggregator.com/attestation/quote
 
-# Métriques détaillées
-curl https://perf-aggregator.com/users/trader-john/metrics
+# Get performance summary (requires valid session)
+curl https://perf-aggregator.com/enclave/summary/session_abc123_def456
+
+# Get detailed metrics (requires valid session)
+curl https://perf-aggregator.com/enclave/metrics/session_abc123_def456
 ```
 
-## 🌐 **Intégration web**
+## 🌐 **Web Integration**
 
-### **JavaScript**
+### **JavaScript (Secure Client)**
 ```javascript
-// Récupérer le résumé
-const summary = await fetch('https://perf-aggregator.com/users/trader-john/summary')
-  .then(r => r.json());
+import { SecureClient } from '@perf-aggregator/client';
 
-console.log(`Volume: $${summary.summary.totalVolume}`);
-console.log(`Return: ${summary.summary.totalReturnPct}%`);
+// Initialize secure client
+const client = new SecureClient({
+  enclaveUrl: 'https://perf-aggregator.com',
+  userId: 'institutional-trader-001',
+  exchange: 'binance',
+  apiKey: process.env.BINANCE_API_KEY,
+  apiSecret: process.env.BINANCE_SECRET,
+  sandbox: false
+});
+
+// Establish secure session
+await client.register();
+
+// Retrieve performance metrics
+const metrics = await client.getMetrics();
+console.log(`Total Volume: $${metrics.summary.totalVolume}`);
+console.log(`Total Return: ${metrics.summary.totalReturnPct}%`);
+console.log(`Sharpe Ratio: ${metrics.summary.sharpeRatio}`);
+
+// Clean up session
+await client.revoke();
 ```
 
-### **Python**
+### **Python Integration**
 ```python
 import requests
+import os
 
-# Récupérer le résumé
-response = requests.get('https://perf-aggregator.com/users/trader-john/summary')
+# Configuration
+enclave_url = "https://perf-aggregator.com"
+session_id = os.getenv('PERF_AGGREGATOR_SESSION_ID')
+
+# Retrieve performance summary
+response = requests.get(f'{enclave_url}/enclave/summary/{session_id}')
 summary = response.json()
 
-print(f"Volume: ${summary['summary']['totalVolume']}")
-print(f"Return: {summary['summary']['totalReturnPct']}%")
+print(f"Total Volume: ${summary['summary']['totalVolume']:,.2f}")
+print(f"Total Return: {summary['summary']['totalReturnPct']:.2f}%")
+print(f"Sharpe Ratio: {summary['summary']['sharpeRatio']:.2f}")
+print(f"Maximum Drawdown: {summary['summary']['maxDrawdown']:.2f}%")
 ```
 
-## 🔧 **Configuration des variables d'environnement**
+### **Node.js Server Integration**
+```javascript
+const express = require('express');
+const { SecureClient } = require('@perf-aggregator/client');
 
-### **PowerShell**
+const app = express();
+
+app.get('/portfolio/performance', async (req, res) => {
+  try {
+    const client = new SecureClient({
+      enclaveUrl: process.env.ENCLAVE_URL,
+      userId: req.user.traderId,
+      exchange: 'binance',
+      apiKey: req.user.apiKey,
+      apiSecret: req.user.apiSecret
+    });
+
+    await client.register();
+    const metrics = await client.getMetrics();
+    await client.revoke();
+
+    res.json({
+      success: true,
+      data: metrics,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Performance metrics unavailable',
+      message: error.message
+    });
+  }
+});
+```
+
+## 🔧 **Environment Configuration**
+
+### **PowerShell Environment**
 ```powershell
+# Production environment configuration
 $env:PERF_AGGREGATOR_URL = "https://perf-aggregator.com"
-$env:BINANCE_API_KEY = "votre-api-key"
-$env:BINANCE_SECRET = "votre-secret"
+$env:BINANCE_API_KEY = "your-institutional-api-key"
+$env:BINANCE_SECRET = "your-institutional-secret"
+$env:TRADING_ENVIRONMENT = "production"
 
-.\register-user.ps1 -UserId "trader-john" -Exchange "binance" -ApiKey $env:BINANCE_API_KEY -Secret $env:BINANCE_SECRET -ServiceUrl $env:PERF_AGGREGATOR_URL
+# Register with environment variables
+.\register-user.ps1 `
+  -UserId "institutional-trader-001" `
+  -Exchange "binance" `
+  -ApiKey $env:BINANCE_API_KEY `
+  -Secret $env:BINANCE_SECRET `
+  -ServiceUrl $env:PERF_AGGREGATOR_URL `
+  -Secure
 ```
 
-### **Bash/Linux**
+### **Docker Environment**
 ```bash
-export PERF_AGGREGATOR_URL="https://perf-aggregator.com"
-export BINANCE_API_KEY="votre-api-key"
-export BINANCE_SECRET="votre-secret"
+# Docker configuration for institutional deployment
+export PERF_AGGREGATOR_URL="https://perf-aggregator.company.com"
+export BINANCE_API_KEY="your-api-key"
+export BINANCE_SECRET="your-secret"
+export NODE_ENV="production"
 
-# Utiliser avec curl
-curl -X POST "$PERF_AGGREGATOR_URL/users" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "userId": "trader-john",
-    "exchange": "binance",
-    "apiKey": "'$BINANCE_API_KEY'",
-    "secret": "'$BINANCE_SECRET'",
-    "accountType": "spot"
-  }'
+# Run containerized client
+docker run -d \
+  --name perf-aggregator-client \
+  -e PERF_AGGREGATOR_URL=$PERF_AGGREGATOR_URL \
+  -e BINANCE_API_KEY=$BINANCE_API_KEY \
+  -e BINANCE_SECRET=$BINANCE_SECRET \
+  -e NODE_ENV=$NODE_ENV \
+  perf-aggregator-client:latest
 ```
 
-## 🚨 **Sécurité**
+### **Kubernetes Deployment**
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: trading-credentials
+type: Opaque
+data:
+  api-key: <base64-encoded-api-key>
+  api-secret: <base64-encoded-secret>
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: perf-aggregator-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: perf-aggregator-client
+  template:
+    metadata:
+      labels:
+        app: perf-aggregator-client
+    spec:
+      containers:
+      - name: client
+        image: perf-aggregator-client:latest
+        env:
+        - name: PERF_AGGREGATOR_URL
+          value: "https://perf-aggregator.company.com"
+        - name: BINANCE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: trading-credentials
+              key: api-key
+        - name: BINANCE_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: trading-credentials
+              key: api-secret
+```
 
-### **Recommandations**
-- ✅ Utilisez toujours HTTPS en production
-- ✅ Activez l'option `-Secure` pour le chiffrement
-- ✅ Utilisez des API keys avec permissions limitées
-- ✅ Activez le sandbox pour les tests
-- ❌ Ne partagez jamais vos credentials
-- ❌ N'utilisez pas localhost en production
+## 🚨 **Security Best Practices**
 
-### **Permissions API recommandées**
-- ✅ Lecture des trades
-- ✅ Lecture des ordres
-- ❌ Trading automatique
-- ❌ Retrait de fonds
+### **Production Recommendations**
+- ✅ **Always use HTTPS** in production environments
+- ✅ **Enable `-Secure` option** for encrypted credential transmission
+- ✅ **Use API keys with minimal permissions** (read-only recommended)
+- ✅ **Enable sandbox mode** for testing and validation
+- ✅ **Implement certificate pinning** for enhanced security
+- ✅ **Use hardware security keys** for administrative access
+- ❌ **Never share credentials** or API keys
+- ❌ **Never use localhost** in production environments
+- ❌ **Never commit secrets** to version control
+
+### **Recommended API Permissions**
+```yaml
+required_permissions:
+  - read_trading_history
+  - read_account_balance
+  - read_open_orders
+  
+forbidden_permissions:
+  - create_orders
+  - cancel_orders
+  - withdraw_funds
+  - modify_account_settings
+```
+
+### **Network Security**
+```bash
+# Firewall configuration for client access
+# Allow only necessary outbound connections
+iptables -A OUTPUT -p tcp --dport 443 -d perf-aggregator.com -j ACCEPT
+iptables -A OUTPUT -p tcp --dport 443 -d api.binance.com -j ACCEPT
+iptables -A OUTPUT -j DROP
+
+# DNS over HTTPS for enhanced privacy
+export DNS_OVER_HTTPS=1
+export DOH_SERVER="https://cloudflare-dns.com/dns-query"
+```
+
+## 📈 **Performance Monitoring**
+
+### **Real-time Metrics Dashboard**
+```javascript
+// WebSocket connection for real-time updates
+const ws = new WebSocket('wss://perf-aggregator.com/ws');
+
+ws.onmessage = (event) => {
+  const update = JSON.parse(event.data);
+  
+  if (update.type === 'performance_update') {
+    updateDashboard({
+      totalReturn: update.data.totalReturnPct,
+      sharpeRatio: update.data.sharpeRatio,
+      maxDrawdown: update.data.maxDrawdown,
+      timestamp: update.timestamp
+    });
+  }
+};
+```
+
+### **Automated Reporting**
+```powershell
+# Scheduled performance report generation
+$schedule = New-ScheduledTaskTrigger -Daily -At "09:00"
+$action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-File C:\Scripts\generate-performance-report.ps1"
+
+Register-ScheduledTask -TaskName "DailyPerformanceReport" -Trigger $schedule -Action $action
+```
+
+---
+
+**Last Updated**: 2025-01-15  
+**Version**: 1.0.0  
+**Support**: support@company.com

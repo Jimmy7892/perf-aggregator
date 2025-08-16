@@ -1,9 +1,9 @@
 /**
  * WebCrypto Client Helper for Secure Key Exchange
- * 
+ *
  * SECURITY: This implements X25519 ECDH + AES-GCM encryption for client-side
  * credential encryption before sending to the enclave.
- * 
+ *
  * Flow:
  * 1. Client verifies enclave attestation (mock verification in dev)
  * 2. Client generates ephemeral X25519 key pair
@@ -29,18 +29,18 @@ export class CryptoHelper {
 
   /**
    * Verify enclave attestation quote
-   * 
+   *
    * SECURITY: In production, this must verify:
    * - Quote signature against vendor CA (Intel/AWS/etc.)
    * - Enclave measurement matches expected value
    * - Security flags are appropriate
-   * 
+   *
    * @param quote Attestation quote from enclave
    * @param expectedImageHash Expected hash of enclave image
    * @returns true if attestation is valid
    */
   static async verifyAttestation(
-    quote: AttestationQuote, 
+    quote: AttestationQuote,
     expectedImageHash: string
   ): Promise<AttestationVerificationResult> {
     try {
@@ -51,22 +51,22 @@ export class CryptoHelper {
         return { valid: true };
       } else {
         console.warn('❌ Mock attestation verification failed: image hash mismatch');
-        return { 
-          valid: false, 
-          error: `Image hash mismatch. Expected: ${expectedImageHash}, Got: ${quote.image_hash}` 
+        return {
+          valid: false,
+          error: `Image hash mismatch. Expected: ${expectedImageHash}, Got: ${quote.image_hash}`
         };
       }
     } catch (error) {
-      return { 
-        valid: false, 
-        error: error instanceof Error ? error.message : 'Unknown verification error' 
+      return {
+        valid: false,
+        error: error instanceof Error ? error.message : 'Unknown verification error'
       };
     }
   }
 
   /**
    * Encrypt credentials using X25519 ECDH + AES-GCM
-   * 
+   *
    * @param credentials User credentials to encrypt
    * @param enclavePubKeyB64 Enclave's X25519 public key (base64)
    * @returns Encrypted payload ready for transmission
@@ -125,13 +125,13 @@ export class CryptoHelper {
       // 5. Derive AES-GCM key from shared secret using HKDF
       const salt = crypto.getRandomValues(new Uint8Array(16));
       const info = new TextEncoder().encode('enclave-credentials-v1');
-      
+
       const aesKey = await crypto.subtle.deriveKey(
         {
           name: this.HKDF_ALGORITHM,
           hash: this.HASH_ALGORITHM,
-          salt: salt,
-          info: info
+          salt,
+          info
         },
         sharedSecret,
         {
@@ -180,7 +180,7 @@ export class CryptoHelper {
 
   /**
    * Verify signature of aggregated results
-   * 
+   *
    * @param aggregatesJson Canonical JSON of aggregates
    * @param signatureB64 Base64 encoded signature
    * @param enclavePubKeyB64 Enclave's signing public key
@@ -256,22 +256,22 @@ export class CryptoHelper {
 
 /**
  * Example usage:
- * 
+ *
  * ```typescript
  * // 1. Get attestation from enclave
  * const response = await fetch('/attestation/quote');
  * const attestation = await response.json();
- * 
+ *
  * // 2. Verify attestation
  * const verification = await CryptoHelper.verifyAttestation(
- *   attestation, 
+ *   attestation,
  *   'expected-image-hash'
  * );
- * 
+ *
  * if (!verification.valid) {
  *   throw new Error(`Attestation verification failed: ${verification.error}`);
  * }
- * 
+ *
  * // 3. Encrypt credentials
  * const credentials = {
  *   exchange: 'binance',
@@ -279,12 +279,12 @@ export class CryptoHelper {
  *   apiSecret: 'your-api-secret',
  *   sandbox: false
  * };
- * 
+ *
  * const encrypted = await CryptoHelper.encryptCredentials(
  *   credentials,
  *   attestation.enclave_pubkey
  * );
- * 
+ *
  * // 4. Submit to enclave
  * const submitResponse = await fetch('/enclave/submit_key', {
  *   method: 'POST',

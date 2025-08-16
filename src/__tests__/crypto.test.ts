@@ -1,6 +1,6 @@
 /**
  * Cryptography Tests
- * 
+ *
  * SECURITY CRITICAL: These tests verify that:
  * - No plaintext secrets are stored anywhere
  * - Encryption/decryption works correctly
@@ -24,7 +24,7 @@ describe('CryptoHelper', () => {
     test('should verify valid mock attestation', async () => {
       const quote = await enclaveService.getAttestationQuote();
       const result = await CryptoHelper.verifyAttestation(quote, quote.image_hash);
-      
+
       expect(result.valid).toBe(true);
       expect(result.error).toBeUndefined();
     });
@@ -32,7 +32,7 @@ describe('CryptoHelper', () => {
     test('should reject invalid image hash', async () => {
       const quote = await enclaveService.getAttestationQuote();
       const result = await CryptoHelper.verifyAttestation(quote, 'wrong-hash');
-      
+
       expect(result.valid).toBe(false);
       expect(result.error).toContain('Image hash mismatch');
     });
@@ -100,7 +100,7 @@ describe('CryptoHelper', () => {
     test('should verify valid signature', async () => {
       const quote = await enclaveService.getAttestationQuote();
       const aggregatesJson = '{"pnl":123.45,"sharpe":1.23}';
-      
+
       // For this test, we'll use the mock signature
       // In a real implementation, this would be a proper Ed25519 signature
       const isValid = await CryptoHelper.verifyAggregateSignature(
@@ -118,7 +118,7 @@ describe('CryptoHelper', () => {
   describe('Utility Functions', () => {
     test('should generate valid session IDs', () => {
       const sessionId = CryptoHelper.generateSessionId();
-      
+
       expect(sessionId).toMatch(/^[a-f0-9]{32}$/);
       expect(sessionId.length).toBe(32);
     });
@@ -133,7 +133,7 @@ describe('CryptoHelper', () => {
     test('should securely zero array buffers', () => {
       const buffer = new Uint8Array([1, 2, 3, 4, 5]);
       CryptoHelper.secureZero(buffer);
-      
+
       expect(Array.from(buffer)).toEqual([0, 0, 0, 0, 0]);
     });
   });
@@ -153,7 +153,7 @@ describe('CryptoHelper', () => {
       const payloadString = JSON.stringify(encrypted);
       expect(payloadString).not.toContain('super-secret-key');
       expect(payloadString).not.toContain('ultra-secret-value');
-      
+
       // Verify ciphertext is actually encrypted (not base64 of plaintext)
       const credentialsJson = JSON.stringify(credentials);
       const credentialsBase64 = btoa(credentialsJson);
@@ -164,9 +164,9 @@ describe('CryptoHelper', () => {
       // This test ensures that sensitive data doesn't leak through memory
       const sensitiveData = new Uint8Array([1, 2, 3, 4, 5]);
       const originalData = Array.from(sensitiveData);
-      
+
       CryptoHelper.secureZero(sensitiveData);
-      
+
       expect(Array.from(sensitiveData)).not.toEqual(originalData);
       expect(Array.from(sensitiveData)).toEqual([0, 0, 0, 0, 0]);
     });

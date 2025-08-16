@@ -1,7 +1,7 @@
 /**
  * Database connection and operations
- * 
- * SECURITY: 
+ *
+ * SECURITY:
  * - Uses parameterized queries to prevent SQL injection
  * - Never logs sensitive data (ciphertext, API keys)
  * - Implements proper connection pooling and error handling
@@ -25,7 +25,7 @@ export class Database {
       connectionString: connectionString || process.env.DATABASE_URL || 'postgresql://localhost:5432/perf_aggregator',
       max: DB_CONFIG.MAX_CONNECTIONS,
       idleTimeoutMillis: DB_CONFIG.IDLE_TIMEOUT,
-      connectionTimeoutMillis: DB_CONFIG.CONNECTION_TIMEOUT,
+      connectionTimeoutMillis: DB_CONFIG.CONNECTION_TIMEOUT
     });
   }
 
@@ -62,9 +62,9 @@ export class Database {
 
   // Session operations
   async createSession(
-    userId: string, 
-    exchange: string, 
-    label: string, 
+    userId: string,
+    exchange: string,
+    label: string,
     ttlSeconds: number = 86400
   ): Promise<Session> {
     const client = await this.pool.connect();
@@ -121,10 +121,10 @@ export class Database {
         'INSERT INTO credentials (session_id, ephemeral_pub, nonce, ciphertext, tag, expires_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
         [sessionId, ephemeralPub, nonce, ciphertext, tag, expiresAt]
       );
-      
+
       // Log successful storage (without sensitive data)
       await this.logOperation('INFO', `Credentials stored for session ${sessionId}`, sessionId);
-      
+
       return result.rows[0];
     } finally {
       client.release();
@@ -151,7 +151,7 @@ export class Database {
         'DELETE FROM credentials WHERE session_id = $1',
         [sessionId]
       );
-      
+
       await this.logOperation('INFO', `Credentials deleted for session ${sessionId}`, sessionId);
     } finally {
       client.release();
@@ -170,9 +170,9 @@ export class Database {
         'INSERT INTO aggregates (session_id, aggregates_signed, signed_by) VALUES ($1, $2, $3) RETURNING *',
         [sessionId, JSON.stringify(aggregatesSigned), signedBy]
       );
-      
+
       await this.logOperation('INFO', `Aggregates stored for session ${sessionId}`, sessionId);
-      
+
       return result.rows[0];
     } finally {
       client.release();

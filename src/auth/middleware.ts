@@ -1,6 +1,6 @@
 /**
  * Authentication and Authorization Middleware
- * 
+ *
  * Provides JWT-based authentication and role-based access control
  * for operator endpoints and administrative functions.
  */
@@ -40,7 +40,7 @@ export interface AuthConfig {
 const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   admin: [
     'sessions:read',
-    'sessions:write', 
+    'sessions:write',
     'users:read',
     'users:write',
     'aggregates:read',
@@ -48,7 +48,7 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   ],
   operator: [
     'sessions:read',
-    'users:read', 
+    'users:read',
     'aggregates:read'
   ],
   viewer: [
@@ -108,7 +108,7 @@ export class AuthenticationService {
       expiresIn: this.config.jwtExpiresIn,
       issuer: 'secure-enclave-backend',
       audience: 'enclave-operators'
-    });
+    } as jwt.SignOptions);
   }
 
   /**
@@ -182,7 +182,7 @@ export function requireAuthentication(authService: AuthenticationService) {
 
       // Verify token
       const payload = authService.verifyToken(token);
-      
+
       // Attach user to request
       (request as any).user = {
         id: payload.userId,
@@ -206,7 +206,7 @@ export function requireAuthentication(authService: AuthenticationService) {
 export function requirePermission(permission: string) {
   return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
     const user = (request as any).user as AuthenticatedUser;
-    
+
     if (!user) {
       reply.code(401).send({
         error: 'Authentication required',
@@ -231,10 +231,10 @@ export function requirePermission(permission: string) {
  */
 export function requireRole(requiredRole: UserRole | UserRole[]) {
   const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
-  
+
   return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
     const user = (request as any).user as AuthenticatedUser;
-    
+
     if (!user) {
       reply.code(401).send({
         error: 'Authentication required',
@@ -260,7 +260,7 @@ export function requireRole(requiredRole: UserRole | UserRole[]) {
 export function requireApiKey(validApiKeys: string[]) {
   return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
     const apiKey = request.headers['x-api-key'] as string;
-    
+
     if (!apiKey) {
       reply.code(401).send({
         error: 'API key required',
@@ -272,7 +272,7 @@ export function requireApiKey(validApiKeys: string[]) {
     // Use constant-time comparison to prevent timing attacks
     const isValidKey = validApiKeys.some(validKey => {
       if (validKey.length !== apiKey.length) return false;
-      
+
       let result = 0;
       for (let i = 0; i < validKey.length; i++) {
         result |= validKey.charCodeAt(i) ^ apiKey.charCodeAt(i);
@@ -303,7 +303,7 @@ export function requireApiKey(validApiKeys: string[]) {
  */
 export function rateLimitByUser(maxRequests: number, windowMs: number) {
   const userCounts = new Map<string, { count: number; resetTime: number }>();
-  
+
   return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
     const user = (request as any).user as AuthenticatedUser;
     if (!user) return; // Skip if no user (handled by auth middleware)
@@ -344,7 +344,7 @@ export function auditLog(db: Database, action: string) {
     const userAgent = request.headers['user-agent'];
 
     try {
-      await db.logOperation('INFO', 
+      await db.logOperation('INFO',
         `Audit: ${action} by ${user?.email || 'anonymous'} from ${clientIp}`,
         undefined
       );

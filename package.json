@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "perf-aggregator",
   "version": "0.1.0",
   "private": false,
@@ -21,7 +21,7 @@
     "premigrate": "npm run build"
   },
   "dependencies": {
-    "axios": "1.7.2",
+    "axios": "1.8.2",
     "ccxt": "4.2.25",
     "commander": "12.1.0",
     "fastify": "4.26.2",

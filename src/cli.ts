@@ -1,13 +1,13 @@
-import { Command } from "commander";
-import { readFileSync, existsSync } from "fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { readFile } from "fs/promises";
-import YAML from "yaml";
-import axios from "axios";
-import { canonicalize, sha256Hex } from "./libs/canonical.js";
-import { signEd25519Base64 } from "./libs/crypto.js";
-import { listenTrades, WsTrade } from "./ws.js";
+import { Command } from 'commander';
+import { readFileSync, existsSync } from 'fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { readFile } from 'fs/promises';
+import YAML from 'yaml';
+import axios from 'axios';
+import { canonicalize, sha256Hex } from './libs/canonical.js';
+import { signEd25519Base64 } from './libs/crypto.js';
+import { listenTrades, WsTrade } from './ws.js';
 
 type Config = {
   backend: string;
@@ -33,17 +33,17 @@ function resolveConfigPath(p: string): string {
     path.isAbsolute(p) ? p : path.resolve(p),
     path.join(process.cwd(), p),
     path.join(process.cwd(), base),
-    path.join(__dirname, "..", base),
+    path.join(__dirname, '..', base)
   ];
   for (const c of candidates) {
     if (existsSync(c)) return c;
   }
-  throw new Error(`Config not found. Tried: ${candidates.join(" | ")}`);
+  throw new Error(`Config not found. Tried: ${candidates.join(' | ')}`);
 }
 
 function loadConfig(p: string): Config {
   const resolved = resolveConfigPath(p);
-  const txt = readFileSync(resolved, "utf8");
+  const txt = readFileSync(resolved, 'utf8');
   return YAML.parse(txt);
 }
 
@@ -57,10 +57,10 @@ async function loadMockTrades(): Promise<MockTrade[]> {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   const candidates = [
-    path.join(__dirname, "..", "mock", "trades.json"),
-    path.join(__dirname, "..", "src", "mock", "trades.json"),
-    path.join(process.cwd(), "services", "connector", "src", "mock", "trades.json"),
-    path.join(process.cwd(), "services", "connector", "mock", "trades.json"),
+    path.join(__dirname, '..', 'mock', 'trades.json'),
+    path.join(__dirname, '..', 'src', 'mock', 'trades.json'),
+    path.join(process.cwd(), 'services', 'connector', 'src', 'mock', 'trades.json'),
+    path.join(process.cwd(), 'services', 'connector', 'mock', 'trades.json')
   ];
   for (const p of candidates) {
     try {
@@ -68,7 +68,7 @@ async function loadMockTrades(): Promise<MockTrade[]> {
       return JSON.parse(buf.toString());
     } catch {}
   }
-  throw new Error(`Cannot load mock trades. Tried: ${candidates.join(" | ")}`);
+  throw new Error(`Cannot load mock trades. Tried: ${candidates.join(' | ')}`);
 }
 
 function aggregateHourly(trades: MockTrade[]) {
@@ -84,8 +84,8 @@ function aggregateHourly(trades: MockTrade[]) {
   const hourly_buckets = hours.map((h) => {
     const ts = byHour.get(h)!;
     ts.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-    const start = ts[0].price_usd;
-    const end = ts[ts.length - 1].price_usd;
+    const start = ts[0]?.price_usd || 0;
+    const end = ts[ts.length - 1]?.price_usd || 0;
     const tradesCount = ts.length;
     const volume_base = ts.reduce((s, t) => s + t.size_base, 0);
     const volume_quote = ts.reduce((s, t) => s + t.size_base * t.price_usd, 0);
@@ -115,28 +115,28 @@ export async function runConnector(configPath: string, mock: boolean) {
   const __dirname = path.dirname(__filename);
   const candidates = [
     envKey,
-    path.join(process.cwd(), "ed25519_private.key"),
-    path.join(process.cwd(), "services", "connector", "ed25519_private.key"),
-    path.join(__dirname, "..", "..", "ed25519_private.key"),
-    path.join(__dirname, "..", "ed25519_private.key"),
+    path.join(process.cwd(), 'ed25519_private.key'),
+    path.join(process.cwd(), 'services', 'connector', 'ed25519_private.key'),
+    path.join(__dirname, '..', '..', 'ed25519_private.key'),
+    path.join(__dirname, '..', 'ed25519_private.key')
   ].filter(Boolean) as string[];
   let selected: string | null = null;
   for (const p of candidates) {
-    if (typeof p === "string" && existsSync(p)) { selected = p; break; }
+    if (typeof p === 'string' && existsSync(p)) { selected = p; break; }
   }
   if (!selected) {
-    console.error("Missing private key PEM. Tried:", candidates.join(" | "));
+    console.error('Missing private key PEM. Tried:', candidates.join(' | '));
     process.exit(1);
   }
-  const privatePem = readFileSync(selected, "utf8");
+  const privatePem = readFileSync(selected, 'utf8');
   let trades: MockTrade[] = [];
   if (mock) {
     // If a mock exchange URL is provided, fetch from it, else use local file dataset
     const url = process.env.MOCK_EXCHANGE_URL || cfg.mock_exchange_url;
     if (url) {
       // Prefer websocket stream if available
-      const wsUrl = process.env.MOCK_WS_URL || "ws://localhost:4011/ws/trades";
-      if (process.env.MOCK_USE_WS === "1") {
+      const wsUrl = process.env.MOCK_WS_URL || 'ws://localhost:4011/ws/trades';
+      if (process.env.MOCK_USE_WS === '1') {
         const buffer: WsTrade[] = [];
         const stop = listenTrades(wsUrl, (t) => buffer.push(t));
         // collect for a short window
@@ -144,7 +144,7 @@ export async function runConnector(configPath: string, mock: boolean) {
         stop();
         trades = buffer.map((r) => ({ timestamp: new Date(r.ts).toISOString(), price_usd: r.price, size_base: r.size, fee_usd: r.fee }));
       } else {
-        const res = await axios.get(url + "/api/v1/market/trades", { params: { symbol: "BTCUSDT", limit: 100 } });
+        const res = await axios.get(`${url}/api/v1/market/trades`, { params: { symbol: 'BTCUSDT', limit: 100 } });
         const rows = res.data?.data || [];
         trades = rows.map((r: any) => ({ timestamp: new Date(r.ts).toISOString(), price_usd: Number(r.price), size_base: Number(r.size), fee_usd: Number(r.fee) }));
       }
@@ -153,8 +153,8 @@ export async function runConnector(configPath: string, mock: boolean) {
       trades = await loadMockTrades();
     }
   }
-  const period_start = trades.length ? trades[0].timestamp : new Date().toISOString();
-  const period_end = trades.length ? trades[trades.length - 1].timestamp : new Date().toISOString();
+  const period_start = trades.length ? trades[0]?.timestamp || new Date().toISOString() : new Date().toISOString();
+  const period_end = trades.length ? trades[trades.length - 1]?.timestamp || new Date().toISOString() : new Date().toISOString();
   const { hourly_buckets, totals } = aggregateHourly(trades);
   const base = {
     client_id: cfg.client_id,
@@ -164,10 +164,10 @@ export async function runConnector(configPath: string, mock: boolean) {
     period_end,
     hourly_buckets,
     totals,
-    metadata: { mode: mock ? "mock" : "live" }
+    metadata: { mode: mock ? 'mock' : 'live' }
   } as const;
 
-  const { signature: _skip, ...unsigned } = { ...base, signature: "" } as any;
+  const { signature: _skip, ...unsigned } = { ...base, signature: '' } as any;
   const canonical = canonicalize(unsigned);
   const signature = signEd25519Base64(canonical, privatePem);
   const payload = { ...base, signature };
@@ -175,22 +175,22 @@ export async function runConnector(configPath: string, mock: boolean) {
 
   const canonicalWithSig = canonicalize(payload as any);
   const digest = sha256Hex(canonical);
-  console.log("Payload digest:", digest);
+  console.log('Payload digest:', digest);
 
   const backendOverride = process.env.CONNECTOR_BACKEND || cfg.backend;
   const url = `${backendOverride}/api/ingest`;
-  const res = await axios.post(url, payload, { headers: { "content-type": "application/json" } });
-  console.log("Ingest response:", res.status, res.data);
+  const res = await axios.post(url, payload, { headers: { 'content-type': 'application/json' } });
+  console.log('Ingest response:', res.status, res.data);
 }
 
 const program = new Command();
 program
-  .name("connector")
-  .description("Track-record connector")
-  .option("--mock", "use mock dataset", false)
-  .option("--daemon", "run continuously (polling)", false)
-  .option("--interval <seconds>", "poll interval seconds (daemon)", (v) => Number(v), 10)
-  .requiredOption("--config <path>", "config file path")
+  .name('connector')
+  .description('Track-record connector')
+  .option('--mock', 'use mock dataset', false)
+  .option('--daemon', 'run continuously (polling)', false)
+  .option('--interval <seconds>', 'poll interval seconds (daemon)', (v) => Number(v), 10)
+  .requiredOption('--config <path>', 'config file path')
   .action(async (opts) => {
     if (opts.daemon) {
       const intervalSec: number = opts.interval ?? 10;

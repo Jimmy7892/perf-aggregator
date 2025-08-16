@@ -1,12 +1,12 @@
 /**
  * Mock TEE Enclave Service for Development
- * 
+ *
  * SECURITY WARNING: This is a development-only implementation.
  * In production, replace with actual TEE enclave (AWS Nitro, Intel SGX, etc.)
- * 
+ *
  * This mock simulates enclave behavior:
  * - Decrypts credentials using a development private key
- * - Computes deterministic signed aggregates  
+ * - Computes deterministic signed aggregates
  * - Provides mock attestation quotes
  * - Demonstrates proper secret handling patterns
  */
@@ -17,7 +17,8 @@ import type {
   EncryptedPayload,
   DecryptedCredentials,
   SignedAggregates,
-  AttestationQuote
+  AttestationQuote,
+  PerformanceMetrics
 } from '../types/index.js';
 import { signEd25519Base64, verifyEd25519 } from '../libs/crypto.js';
 import { canonicalize } from '../libs/canonical.js';
@@ -36,26 +37,26 @@ export class MockEnclaveService extends BaseEnclaveService {
   protected readonly enclavePrivateKey: string;
   protected readonly enclavePublicKey: string;
   private readonly x25519PrivateKey: Buffer;
-  
+
   // In-memory session storage (simulates enclave sealed storage)
   private sessions = new Map<string, SessionData>();
-  
+
   constructor() {
     super();
-    
+
     // Generate deterministic development keys for testing
     const seed = Buffer.from('dev-enclave-seed-change-in-production', 'utf8');
     const hash = createHash('sha256').update(seed).digest();
-    
+
     // Mock ED25519 keys for signing
     this.enclavePrivateKey = hash.toString('base64');
     this.enclavePublicKey = createHash('sha256').update(this.enclavePrivateKey).digest('base64');
-    
+
     // Mock X25519 private key for ECDH
     this.x25519PrivateKey = hash.subarray(0, 32);
-    
+
     console.log('🔒 Mock Enclave Service initialized (DEV ONLY)');
-    console.log('📋 Enclave Public Key:', this.enclavePublicKey.substring(0, 16) + '...');
+    console.log('📋 Enclave Public Key:', `${this.enclavePublicKey.substring(0, 16)}...`);
   }
 
   async getAttestationQuote(): Promise<AttestationQuote> {
@@ -63,21 +64,21 @@ export class MockEnclaveService extends BaseEnclaveService {
     const mockQuote = Buffer.from(JSON.stringify({
       version: '1.0',
       timestamp: Date.now(),
-      enclave_measurement: 'mock-measurement-' + createHash('sha256').update('mock-enclave').digest('hex'),
-      flags: ['DEBUG'], // Indicates this is a development enclave
+      enclave_measurement: `mock-measurement-${createHash('sha256').update('mock-enclave').digest('hex')}`,
+      flags: ['DEBUG'] // Indicates this is a development enclave
     })).toString('base64');
-    
+
     return {
       quote: mockQuote,
       enclave_pubkey: this.enclavePublicKey,
-      image_hash: 'mock-' + createHash('sha256').update('dev-enclave-image').digest('hex')
+      image_hash: `mock-${createHash('sha256').update('dev-enclave-image').digest('hex')}`
     };
   }
 
   async submitKey(sessionId: string, payload: EncryptedPayload): Promise<{ success: boolean; error?: string }> {
     try {
       console.log(`🔐 Decrypting credentials for session ${sessionId} (DEV MOCK)`);
-      
+
       // Validate input format
       const validation = ValidationUtils.validateEncryptedPayload(payload);
       if (!validation.valid) {
@@ -86,7 +87,7 @@ export class MockEnclaveService extends BaseEnclaveService {
 
       // Decrypt credentials (mock implementation)
       const credentials = await this.decryptCredentials(payload);
-      
+
       // Validate decrypted credentials
       if (!credentials.exchange || !credentials.apiKey || !credentials.apiSecret) {
         this.secureZeroCredentials(credentials);
@@ -105,9 +106,9 @@ export class MockEnclaveService extends BaseEnclaveService {
 
     } catch (error) {
       console.error('❌ Failed to decrypt credentials:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Decryption failed' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Decryption failed'
       };
     }
   }
@@ -133,11 +134,11 @@ export class MockEnclaveService extends BaseEnclaveService {
 
     // Mock aggregate computation - in production, this would use real trading data
     const mockAggregates = this.computeMockAggregates(session.credentials);
-    
+
     // Sign the aggregates
-    const canonical = canonicalize(mockAggregates);
+    const canonical = canonicalize(mockAggregates as any);
     const signature = signEd25519Base64(canonical, this.enclavePrivateKey);
-    
+
     const signedAggregates: SignedAggregates = {
       signature,
       payload: mockAggregates
@@ -165,10 +166,10 @@ export class MockEnclaveService extends BaseEnclaveService {
     if (session) {
       // Securely zero credentials in memory
       this.secureZeroCredentials(session.credentials);
-      
+
       // Remove from enclave storage
       this.sessions.delete(sessionId);
-      
+
       console.log(`🗑️ Session ${sessionId} revoked and purged from enclave`);
     }
   }
@@ -182,12 +183,12 @@ export class MockEnclaveService extends BaseEnclaveService {
     // 1. Perform X25519 ECDH with ephemeral_pub and enclave private key
     // 2. Derive AES-GCM key using HKDF
     // 3. Decrypt ciphertext using derived key, nonce, and verify tag
-    
+
     // For development, return mock decrypted data
     const mockCredentials: DecryptedCredentials = {
       exchange: 'binance',
-      apiKey: 'mock-api-key-' + randomBytes(8).toString('hex'),
-      apiSecret: 'mock-api-secret-' + randomBytes(16).toString('hex'),
+      apiKey: `mock-api-key-${randomBytes(8).toString('hex')}`,
+      apiSecret: `mock-api-secret-${randomBytes(16).toString('hex')}`,
       sandbox: true,
       symbols: ['BTC/USDT', 'ETH/USDT']
     };
@@ -198,21 +199,23 @@ export class MockEnclaveService extends BaseEnclaveService {
   /**
    * Generate deterministic mock aggregates for testing
    */
-  private computeMockAggregates(credentials: DecryptedCredentials) {
+  private computeMockAggregates(credentials: DecryptedCredentials): PerformanceMetrics {
     // Create deterministic but realistic-looking aggregates
     const seed = createHash('sha256').update(credentials.apiKey + credentials.exchange).digest();
-    const random = (index: number) => (seed[index % seed.length] / 255);
+    const random = (index: number) => ((seed[index % seed.length] || 0) / 255);
 
     const baseReturn = (random(0) - 0.5) * 20; // ±10% range
     const volatility = random(1) * 0.3 + 0.1; // 0.1-0.4 range
-    
+
     return {
-      pnl: Math.round((baseReturn * 1000 + (random(2) - 0.5) * 200) * 100) / 100,
-      sharpe: Math.round((baseReturn / volatility) * 100) / 100,
       volume: Math.round(random(3) * 100000 * 100) / 100,
       trades: Math.floor(random(4) * 500) + 10,
-      from: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-      to: new Date().toISOString()
+      returnPct: Math.round(baseReturn * 100) / 100,
+      returnUsd: Math.round((baseReturn * 1000 + (random(2) - 0.5) * 200) * 100) / 100,
+      totalFees: Math.round(random(5) * 50 * 100) / 100,
+      realizedPnL: Math.round((baseReturn * 1000 + (random(2) - 0.5) * 200) * 100) / 100,
+      periodStart: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      periodEnd: new Date().toISOString()
     };
   }
 
@@ -226,14 +229,13 @@ export class MockEnclaveService extends BaseEnclaveService {
     credentials.apiSecret = '';
   }
 
-
   /**
    * Get development session info (for testing only)
    */
   getSessionInfo(sessionId: string) {
     const session = this.sessions.get(sessionId);
     if (!session) return null;
-    
+
     return {
       sessionId: session.sessionId,
       exchange: session.credentials.exchange,
