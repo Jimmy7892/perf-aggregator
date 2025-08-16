@@ -40,10 +40,10 @@ Performance Aggregator is a production-ready financial technology service design
 - **Real-time Data**: WebSocket and REST API integration
 
 #### 3. Analytics Engine
-- **Performance Metrics**: PnL, Sharpe ratio, maximum drawdown, volatility
-- **Risk Analytics**: Value-at-Risk (VaR), portfolio exposure analysis
-- **Compliance Reporting**: Regulatory-compliant performance reporting
-- **Historical Analysis**: Time-series analysis with configurable periods
+- **Performance Metrics**: Volume, trades count, return %, return $, fees
+- **Trade Pairing**: FIFO matching of buy/sell trades for realized P&L
+- **Real-time Processing**: Live trade aggregation and metric calculation
+- **Data Retention**: 30-day automatic cleanup of historical data
 
 ## Security Framework
 
@@ -54,16 +54,16 @@ Performance Aggregator is a production-ready financial technology service design
 - **Perfect Forward Secrecy**: Ephemeral key exchange for each session
 
 ### Compliance Standards
-- **SOC 2 Type II**: System and Organization Controls compliance
-- **ISO 27001**: Information Security Management certification
-- **PCI DSS**: Payment Card Industry Data Security Standard
-- **GDPR**: General Data Protection Regulation compliance
+- **Financial Data Protection**: Secure handling of trading credentials
+- **Session Management**: Time-limited access with automatic expiration
+- **Data Encryption**: End-to-end encryption of sensitive information
+- **Audit Trail**: Comprehensive logging of all operations
 
 ### Threat Model Protection
-- **Database Compromise**: Encrypted credential storage prevents exposure
-- **Insider Threats**: Zero-knowledge architecture for administrative access
-- **Network Interception**: End-to-end encryption with certificate pinning
-- **Memory Attacks**: Secure memory zeroing and TEE isolation
+- **Credential Exposure**: Zero-plaintext storage of API keys
+- **Session Hijacking**: Time-limited sessions with automatic cleanup
+- **Data Interception**: End-to-end encryption of all sensitive data
+- **Memory Attacks**: Secure enclave isolation and data protection
 
 ## Installation and Deployment
 
@@ -158,19 +158,98 @@ Content-Type: application/json
 **Description**: Submit encrypted trading credentials for secure processing.
 **Response**: Session identifier and expiration timestamp.
 
+**Response Example**:
+```json
+{
+  "session_id": "session_1704067200000_abc123def",
+  "expires_at": "2024-01-16T00:00:00.000Z",
+  "status": "active"
+}
+```
+
 ### Performance Metrics Retrieval
 ```http
 GET /enclave/metrics/{sessionId}
 ```
-**Description**: Retrieve comprehensive trading performance analytics.
+**Description**: Retrieve detailed trading performance metrics per symbol.
 **Authentication**: Session-based authentication via session ID.
+
+**Response Example**:
+```json
+{
+  "metrics": [
+    {
+      "volume": 125000.50,
+      "trades": 45,
+      "returnPct": 2.34,
+      "returnUsd": 2925.12,
+      "totalFees": 187.50,
+      "realizedPnL": 2737.62,
+      "periodStart": "2024-01-01T00:00:00.000Z",
+      "periodEnd": "2024-01-15T23:59:59.999Z"
+    }
+  ],
+  "summary": {
+    "totalVolume": 125000.50,
+    "totalTrades": 45,
+    "totalReturnPct": 2.34,
+    "totalReturnUsd": 2737.62,
+    "totalFees": 187.50
+  },
+  "session_expires": "2024-01-16T00:00:00.000Z"
+}
+```
 
 ### Summary Analytics
 ```http
 GET /enclave/summary/{sessionId}
 ```
-**Description**: Retrieve summarized performance metrics and risk analytics.
+**Description**: Retrieve aggregated performance summary across all symbols.
 **Authentication**: Session-based authentication via session ID.
+
+**Response Example**:
+```json
+{
+  "summary": {
+    "totalVolume": 125000.50,
+    "totalTrades": 45,
+    "totalReturnPct": 2.34,
+    "totalReturnUsd": 2737.62,
+    "totalFees": 187.50
+  },
+  "session_expires": "2024-01-16T00:00:00.000Z"
+}
+```
+
+## Data Formats
+
+### Trade Data Structure
+```json
+{
+  "userId": "trader-001",
+  "symbol": "BTCUSDT",
+  "side": "buy",
+  "amount": 0.1,
+  "price": 50000.00,
+  "fee": 1.50,
+  "timestamp": 1640995200000,
+  "exchange": "binance"
+}
+```
+
+### Performance Metrics Structure
+```json
+{
+  "volume": 125000.50,        // Total trading volume in USD
+  "trades": 45,               // Number of trades executed
+  "returnPct": 2.34,          // Percentage return (realized)
+  "returnUsd": 2925.12,       // Dollar return (realized)
+  "totalFees": 187.50,        // Total fees paid
+  "realizedPnL": 2737.62,     // Net profit/loss after fees
+  "periodStart": "2024-01-01T00:00:00.000Z",
+  "periodEnd": "2024-01-15T23:59:59.999Z"
+}
+```
 
 ## Client Integration
 
@@ -192,7 +271,13 @@ await client.register();
 
 // Retrieve performance metrics
 const metrics = await client.getMetrics();
-console.log('Trading Performance:', metrics);
+console.log('Trading Performance:', {
+  volume: metrics.summary.totalVolume,
+  trades: metrics.summary.totalTrades,
+  returnPct: metrics.summary.totalReturnPct,
+  returnUsd: metrics.summary.totalReturnUsd,
+  fees: metrics.summary.totalFees
+});
 
 // Clean up session
 await client.revoke();
@@ -213,23 +298,24 @@ await client.revoke();
 ## Performance Metrics
 
 ### Core Analytics
-- **Total Return**: Absolute and percentage returns across all positions
-- **Sharpe Ratio**: Risk-adjusted return calculation
-- **Maximum Drawdown**: Largest peak-to-trough decline
-- **Volatility**: Standard deviation of returns
-- **Trading Volume**: Total volume across all exchanges
+- **Volume**: Total trading volume in USD across all positions
+- **Trades**: Number of individual trades executed
+- **Return %**: Percentage return based on buy/sell price differences and fees
+- **Return $**: Absolute dollar return (realized P&L)
+- **Total Fees**: Cumulative trading fees paid
+- **Realized P&L**: Net profit/loss from completed trades
 
-### Risk Metrics
-- **Value at Risk (VaR)**: Potential loss estimation at confidence intervals
-- **Beta**: Portfolio sensitivity to market movements
-- **Portfolio Concentration**: Position size distribution analysis
-- **Correlation Analysis**: Cross-asset correlation matrices
+### Trade Pairing Algorithm
+The service uses FIFO (First In, First Out) matching to pair buy and sell trades chronologically, calculating realized returns based on:
+- Entry price (buy trade)
+- Exit price (sell trade) 
+- Trading fees
+- Time-based matching (sell must occur after buy)
 
-### Compliance Reporting
-- **Trade Attribution**: Individual trade performance tracking
-- **Time-Weighted Returns**: Industry-standard return calculation
-- **Benchmark Comparison**: Performance relative to market indices
-- **Regulatory Reporting**: Formatted outputs for compliance teams
+### Data Retention
+- **30-day retention**: Historical data automatically cleaned up
+- **Real-time processing**: Trades processed as received from exchanges
+- **Session-based access**: Temporary secure sessions with configurable TTL
 
 ## Monitoring and Operations
 
@@ -243,13 +329,13 @@ GET /health
 - **Session Count**: Active secure sessions
 - **Processing Latency**: End-to-end request processing time
 - **Exchange Connectivity**: Real-time exchange API status
-- **Error Rates**: Service error frequency and categorization
+- **Trade Processing**: Number of trades processed per minute
 
 ### Logging and Auditing
-- **Security Events**: All authentication and authorization events
-- **Performance Logs**: Request/response times and throughput
+- **Security Events**: All authentication and session events
+- **Trade Processing**: Trade aggregation and metric calculation logs
 - **Error Tracking**: Detailed error logs with correlation IDs
-- **Compliance Logs**: Audit trail for regulatory requirements
+- **Session Management**: Session creation, access, and cleanup logs
 
 ## Testing and Quality Assurance
 
@@ -267,37 +353,37 @@ pnpm test:integration
 
 ### Performance Testing
 ```bash
-# Load testing
-pnpm test:load
+# Unit testing
+pnpm test
 
-# Stress testing
-pnpm test:stress
+# Integration testing
+pnpm test:integration
 
-# Benchmarking
-pnpm test:benchmark
+# Security testing
+pnpm test:security
 ```
 
 ## Support and Maintenance
 
 ### Production Support
-- **24/7 Monitoring**: Continuous service monitoring and alerting
-- **Incident Response**: Defined SLA for critical issue resolution
-- **Security Updates**: Regular security patches and updates
-- **Performance Optimization**: Ongoing performance tuning
+- **Service Monitoring**: Continuous monitoring of enclave and exchange connectivity
+- **Session Management**: Automatic cleanup of expired sessions
+- **Error Handling**: Robust retry mechanisms for exchange API failures
+- **Data Retention**: Automatic cleanup of historical data
 
 ### Documentation
-- **API Documentation**: Comprehensive OpenAPI specification
-- **Integration Guides**: Step-by-step integration instructions
-- **Security Whitepaper**: Detailed security implementation documentation
-- **Compliance Documentation**: Regulatory compliance certifications
+- **API Documentation**: Complete endpoint documentation with examples
+- **Integration Guides**: Step-by-step client integration instructions
+- **Security Implementation**: Detailed security architecture documentation
+- **Configuration Guide**: Environment and deployment configuration
 
 ## Legal and Compliance
 
 ### Data Protection
-This service processes financial data in compliance with applicable regulations including GDPR, CCPA, and financial industry standards. No personal identifiable information (PII) is stored in plaintext format.
+This service processes trading data securely with zero-plaintext storage of API credentials. All sensitive information is encrypted and processed within secure enclaves.
 
 ### Liability
-This software is provided for institutional trading analytics purposes. Users are responsible for compliance with applicable financial regulations and risk management policies.
+This software is provided for trading performance analytics purposes. Users are responsible for compliance with applicable financial regulations and risk management policies.
 
 ### License
 Proprietary software licensed for enterprise use. Contact licensing@company.com for commercial licensing terms.
