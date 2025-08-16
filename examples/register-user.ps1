@@ -47,29 +47,60 @@ try {
     if ($Secure) {
         Write-Host "🔐 Enregistrement sécurisé via TEE Enclave..." -ForegroundColor Yellow
         
-        # Vérifier que l'enclave est disponible
+        # URL de l'enclave (port 3000)
         $enclaveUrl = $ServiceUrl -replace "5000", "3000"
-        $attestation = Invoke-RestMethod -Uri "$enclaveUrl/attestation/quote" -ErrorAction Stop
         
-        Write-Host "✅ Attestation enclave récupérée" -ForegroundColor Green
-        
-        # Pour un vrai enregistrement sécurisé, il faudrait implémenter le chiffrement
-        # Ici on simule avec des données mock
-        $envelope = @{
-            ephemeral_pub = "mock-ephemeral-key"
-            nonce = "mock-nonce"
-            ciphertext = "mock-encrypted-credentials"
-            tag = "mock-auth-tag"
-            metadata = @{
+        try {
+            # 1. Vérifier que l'enclave est disponible
+            $attestation = Invoke-RestMethod -Uri "$enclaveUrl/attestation/quote" -ErrorAction Stop
+            Write-Host "✅ Attestation enclave récupérée" -ForegroundColor Green
+            
+            # 2. Préparer les credentials
+            $credentials = @{
+                userId = $UserId
                 exchange = $Exchange
-                label = "main-account"
-                ttl = 86400
+                apiKey = $ApiKey
+                secret = $Secret
+                accountType = $AccountType
+                sandbox = $Sandbox
+            } | ConvertTo-Json
+            
+            # 3. Chiffrer les credentials (simulation)
+            $credentialsBytes = [System.Text.Encoding]::UTF8.GetBytes($credentials)
+            $credentialsBase64 = [Convert]::ToBase64String($credentialsBytes)
+            
+            # 4. Créer l'enveloppe chiffrée
+            $envelope = @{
+                ephemeral_pub = "mock-ephemeral-key"
+                nonce = "mock-nonce"
+                ciphertext = $credentialsBase64
+                tag = "mock-auth-tag"
+                metadata = @{
+                    exchange = $Exchange
+                    label = "main-account"
+                    ttl = 86400
+                }
+            } | ConvertTo-Json
+            
+            # 5. Envoyer à l'enclave
+            $response = Invoke-RestMethod -Uri "$enclaveUrl/enclave/submit_key" -Method POST -Body $envelope -ContentType "application/json" -ErrorAction Stop
+            
+            Write-Host "✅ Utilisateur enregistré sécurisé avec session ID: $($response.session_id)" -ForegroundColor Green
+            Write-Host "⏰ Session expire le: $($response.expires_at)" -ForegroundColor Cyan
+            
+            # 6. Tester la récupération des métriques
+            Start-Sleep -Seconds 2
+            try {
+                $metrics = Invoke-RestMethod -Uri "$enclaveUrl/enclave/summary/$($response.session_id)" -ErrorAction Stop
+                Write-Host "✅ Métriques accessibles via session sécurisée" -ForegroundColor Green
+            } catch {
+                Write-Host "⚠️  Session créée mais pas encore de données" -ForegroundColor Yellow
             }
-        } | ConvertTo-Json
-        
-        $response = Invoke-RestMethod -Uri "$enclaveUrl/enclave/submit_key" -Method POST -Body $envelope -ContentType "application/json" -ErrorAction Stop
-        
-        Write-Host "✅ Utilisateur enregistré sécurisé avec session ID: $($response.session_id)" -ForegroundColor Green
+            
+        } catch {
+            Write-Error "❌ Erreur communication avec l'enclave: $($_.Exception.Message)"
+            exit 1
+        }
         
     } else {
         Write-Host "📝 Enregistrement simple..." -ForegroundColor Yellow

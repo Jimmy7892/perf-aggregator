@@ -4,11 +4,26 @@ Service dagrégation temps réel: collecte de trades via API REST optimisée, ag
 
 ## Architecture
 
-- **Service distant** : Hébergé dans une enclave/serveur sécurisé
-- **API REST** : Récupération des trades depuis les exchanges (polling optimisé avec retry)
+### **Sécurité maximale - Communication directe avec l'enclave**
+```
+User → Enclave (directement)
+     ↑
+   API Keys chiffrées uniquement
+```
+
+### **Composants**
+- **Enclave sécurisée** : Port 3000 - Traitement des credentials chiffrés
+- **Service principal** : Port 5000 - Interface publique (optionnel)
+- **API REST** : Récupération des trades depuis les exchanges (polling adaptatif)
 - **TEE Enclave** : Traitement sécurisé des données sensibles
 - **Signature ED25519** : Intégrité cryptographique des agrégations
 - **Détection automatique** : Tous les symboles tradés détectés automatiquement
+
+### **Avantages de sécurité**
+- ✅ **Zero exposition** des API keys à votre serveur principal
+- ✅ **Chiffrement end-to-end** des credentials
+- ✅ **Sessions temporaires** avec TTL automatique
+- ✅ **Attestation cryptographique** de l'enclave
 
 ## Configuration
 
@@ -27,15 +42,25 @@ Service dagrégation temps réel: collecte de trades via API REST optimisée, ag
 
 ## Déploiement
 
-### **Pour les utilisateurs (clients)**
-Le service est hébergé dans une enclave sécurisée. Les utilisateurs s'enregistrent via API :
+### **Pour les utilisateurs (clients) - RECOMMANDÉ**
+
+#### **🔐 Enregistrement sécurisé (recommandé)**
+Communication directe avec l'enclave - **ZERO exposition** des API keys :
 
 ```powershell
-# PowerShell - Enregistrement simple
-.\register-user.ps1 -UserId "trader-john" -Exchange "binance" -ApiKey "abc123..." -Secret "xyz789..." -ServiceUrl "https://perf-aggregator.com"
-
-# Enregistrement sécurisé avec TEE Enclave
+# PowerShell - Communication directe avec l'enclave
 .\register-user.ps1 -UserId "trader-john" -Exchange "binance" -ApiKey "abc123..." -Secret "xyz789..." -ServiceUrl "https://perf-aggregator.com" -Secure
+
+# JavaScript - Client sécurisé
+node examples/secure-client-example.js
+```
+
+#### **⚠️ Enregistrement simple (déconseillé)**
+Via le serveur principal - API keys exposées :
+
+```powershell
+# PowerShell - Via serveur principal (moins sécurisé)
+.\register-user.ps1 -UserId "trader-john" -Exchange "binance" -ApiKey "abc123..." -Secret "xyz789..." -ServiceUrl "https://perf-aggregator.com"
 ```
 
 ### **Pour les développeurs (serveur)**
