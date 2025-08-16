@@ -89,6 +89,12 @@ pnpm build
 pnpm start
 ```
 
+### API Usage
+```bash
+# No client library needed - direct HTTP calls
+# Use any HTTP client: curl, fetch, axios, etc.
+```
+
 ### Production Deployment
 ```bash
 # Build production image
@@ -197,19 +203,7 @@ GET /enclave/metrics/{sessionId}
 
 ## Data Formats
 
-### Trade Data Structure
-```json
-{
-  "userId": "trader-001",
-  "symbol": "BTCUSDT",
-  "side": "buy",
-  "amount": 0.1,
-  "price": 50000.00,
-  "fee": 1.50,
-  "timestamp": 1640995200000,
-  "exchange": "binance"
-}
-```
+
 
 ### Performance Metrics Structure
 ```json
@@ -225,42 +219,44 @@ GET /enclave/metrics/{sessionId}
 }
 ```
 
-## Client Integration
+## API Integration
 
-### Secure Client Example (Node.js)
+### Direct REST API Usage
 ```javascript
-import { SecureClient } from '@perf-aggregator/client';
-
-const client = new SecureClient({
-  enclaveUrl: 'https://perf-aggregator.company.com',
-  userId: 'institutional-trader-001',
-  exchange: 'binance',
-  apiKey: process.env.BINANCE_API_KEY,
-  apiSecret: process.env.BINANCE_SECRET,
-  sandbox: false
+// Direct fetch to enclave API
+const response = await fetch('https://perf-aggregator.company.com/enclave/submit_key', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(encryptedCredentials)
 });
 
-// Establish secure session
-await client.register();
+const { session_id } = await response.json();
 
-// Retrieve performance metrics
-const metrics = await client.getMetrics();
-console.log('Trading Performance:', metrics.metrics);
-
-// Clean up session
-await client.revoke();
+// Get metrics
+const metrics = await fetch(`https://perf-aggregator.company.com/enclave/metrics/${session_id}`);
+const data = await metrics.json();
+console.log('Trading Performance:', data.metrics);
 ```
 
-### PowerShell Integration
-```powershell
-# Secure credential submission
-.\scripts\register-user.ps1 `
-  -UserId "institutional-trader-001" `
-  -Exchange "binance" `
-  -ApiKey $env:BINANCE_API_KEY `
-  -Secret $env:BINANCE_SECRET `
-  -ServiceUrl "https://perf-aggregator.company.com" `
-  -Secure
+### Direct API Integration
+```bash
+# 1. Submit encrypted credentials
+curl -X POST https://perf-aggregator.company.com/enclave/submit_key \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ephemeral_pub": "base64-encoded-key",
+    "nonce": "base64-encoded-nonce",
+    "ciphertext": "base64-encoded-credentials",
+    "tag": "base64-encoded-tag",
+    "metadata": {
+      "exchange": "binance",
+      "label": "main-account",
+      "ttl": 86400
+    }
+  }'
+
+# 2. Get metrics using session ID
+curl https://perf-aggregator.company.com/enclave/metrics/session_id_here
 ```
 
 ## Performance Metrics

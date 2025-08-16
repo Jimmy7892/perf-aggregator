@@ -14,7 +14,7 @@
 import { EventEmitter } from 'events';
 import { logger } from './utils/logger.js';
 import { UserConfig } from './types/index.js';
-import ccxt from 'ccxt';
+import * as ccxt from 'ccxt';
 
 export interface PollingConfig {
   intervalSeconds: number;
@@ -28,16 +28,10 @@ export interface ExchangeSnapshot {
   userId: string;
   exchange: string;
   timestamp: number;
-  balances: Record<string, number>;
-  openOrders: number;
   recentTrades: {
     count: number;
     volume24h: number;
     fees24h: number;
-  };
-  portfolioValue: {
-    total: number;
-    currency: string;
   };
 }
 
@@ -56,6 +50,14 @@ export interface AggregatedMetrics {
   maxDrawdown: number;
   volatility: number;
   lastUpdated: string;
+}
+
+interface TradeData {
+  amount: number;
+  price: number;
+  fee?: {
+    cost: number;
+  };
 }
 
 export class ExchangePoller extends EventEmitter {
@@ -335,7 +337,7 @@ export class ExchangePoller extends EventEmitter {
           details: {
             user_id_hash: this.hashUserId(userId),
             attempt,
-            portfolio_value: snapshot.portfolioValue.total
+            volume_24h: snapshot.recentTrades.volume24h
           }
         });
 
@@ -384,24 +386,14 @@ export class ExchangePoller extends EventEmitter {
     userConfig: UserConfig
   ): Promise<ExchangeSnapshot> {
     
-    // Fetch account data in parallel for efficiency
-    const [balance, openOrders, recentTrades] = await Promise.all([
-      client.fetchBalance(),
-      client.fetchOpenOrders(),
-      this.fetchRecentTradesSummary(client)
-    ]);
-
-    // Calculate portfolio value
-    const portfolioValue = this.calculatePortfolioValue(balance, client);
+    // Fetch only trades data
+    const recentTrades = await this.fetchRecentTradesSummary(client);
 
     const snapshot: ExchangeSnapshot = {
       userId: userConfig.userId,
       exchange: userConfig.exchange,
       timestamp: Date.now(),
-      balances: this.sanitizeBalances(balance),
-      openOrders: openOrders.length,
-      recentTrades,
-      portfolioValue
+      recentTrades
     };
 
     return snapshot;
@@ -418,11 +410,11 @@ export class ExchangePoller extends EventEmitter {
     try {
       // Fetch trades from last 24 hours
       const since = Date.now() - (24 * 60 * 60 * 1000);
-      const trades = await client.fetchMyTrades(undefined, since);
+      const trades = await client.fetchMyTrades(undefined, since) as TradeData[];
 
       // Aggregate data (no raw trade storage)
-      const volume24h = trades.reduce((sum, trade) => sum + (trade.amount * trade.price), 0);
-      const fees24h = trades.reduce((sum, trade) => sum + (trade.fee?.cost || 0), 0);
+      const volume24h = trades.reduce((sum: number, trade: TradeData) => sum + (trade.amount * trade.price), 0);
+      const fees24h = trades.reduce((sum: number, trade: TradeData) => sum + (trade.fee?.cost || 0), 0);
 
       return {
         count: trades.length,
@@ -444,43 +436,6 @@ export class ExchangePoller extends EventEmitter {
         fees24h: 0
       };
     }
-  }
-
-  /**
-   * Calculate portfolio value in USD
-   */
-  private calculatePortfolioValue(balance: any, client: ccxt.Exchange): {
-    total: number;
-    currency: string;
-  } {
-    // Simplified calculation - in production, use real-time pricing
-    const totalValue = Object.entries(balance.total)
-      .filter(([symbol, amount]) => (amount as number) > 0)
-      .reduce((sum, [symbol, amount]) => {
-        // Use last price or estimate - institutional systems would use real-time pricing
-        return sum + (amount as number);
-      }, 0);
-
-    return {
-      total: totalValue,
-      currency: 'USD'
-    };
-  }
-
-  /**
-   * Sanitize balances for logging (remove dust and zero balances)
-   */
-  private sanitizeBalances(balance: any): Record<string, number> {
-    const sanitized: Record<string, number> = {};
-    const minBalance = 0.001; // Minimum balance to report
-
-    for (const [symbol, amount] of Object.entries(balance.total)) {
-      if ((amount as number) >= minBalance) {
-        sanitized[symbol] = amount as number;
-      }
-    }
-
-    return sanitized;
   }
 
   /**
