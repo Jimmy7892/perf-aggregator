@@ -19,7 +19,6 @@ interface EnclaveResponse {
 
 interface MetricsResponse {
   metrics: any[];
-  summary: any;
   session_expires: string;
 }
 
@@ -97,19 +96,7 @@ export class SecureClient {
     return await response.json();
   }
 
-  async getSummary(): Promise<any> {
-    if (!this.sessionId) {
-      throw new Error('Session non initialisée. Appelez register() d\'abord.');
-    }
 
-    const response = await fetch(`${this.config.enclaveUrl}/enclave/summary/${this.sessionId}`);
-
-    if (!response.ok) {
-      throw new Error(`Erreur récupération résumé: ${response.status} ${response.statusText}`);
-    }
-
-    return await response.json();
-  }
 
   private async getAttestation(): Promise<any> {
     const response = await fetch(`${this.config.enclaveUrl}/attestation/quote`);

@@ -91,7 +91,7 @@ try {
             # 6. Tester la récupération des métriques
             Start-Sleep -Seconds 2
             try {
-                $metrics = Invoke-RestMethod -Uri "$enclaveUrl/enclave/summary/$($response.session_id)" -ErrorAction Stop
+                $metrics = Invoke-RestMethod -Uri "$enclaveUrl/enclave/metrics/$($response.session_id)" -ErrorAction Stop
                 Write-Host "✅ Métriques accessibles via session sécurisée" -ForegroundColor Green
             } catch {
                 Write-Host "⚠️  Session créée mais pas encore de données" -ForegroundColor Yellow
@@ -126,8 +126,8 @@ try {
     Start-Sleep -Seconds 2
     
     try {
-        $summary = Invoke-RestMethod -Uri "$ServiceUrl/users/$UserId/summary" -ErrorAction Stop
-        Write-Host "✅ Utilisateur actif - Volume: $($summary.summary.totalVolume)" -ForegroundColor Green
+        $metrics = Invoke-RestMethod -Uri "$ServiceUrl/users/$UserId/metrics" -ErrorAction Stop
+        Write-Host "✅ Utilisateur actif - Symboles: $($metrics.metrics.Count)" -ForegroundColor Green
     } catch {
         Write-Host "⚠️  Utilisateur enregistré mais pas encore de données" -ForegroundColor Yellow
     }
@@ -136,8 +136,7 @@ try {
     Write-Host "🎯 Prochaines étapes:" -ForegroundColor Cyan
     Write-Host "   • Le service distant va détecter automatiquement tous vos symboles tradés" -ForegroundColor White
     Write-Host "   • Aucune configuration supplémentaire nécessaire" -ForegroundColor White
-    Write-Host "   • Consultez vos métriques: $ServiceUrl/users/$UserId/summary" -ForegroundColor White
-    Write-Host "   • Métriques détaillées: $ServiceUrl/users/$UserId/metrics" -ForegroundColor White
+    Write-Host "   • Consultez vos métriques: $ServiceUrl/users/$UserId/metrics" -ForegroundColor White
     Write-Host "   • Vos credentials sont sécurisés dans l'enclave distant" -ForegroundColor White
     
 } catch {

@@ -34,17 +34,8 @@ async function secureRegistrationExample() {
     const metrics = await client.getMetrics();
     
     console.log('\n📈 MÉTRIQUES SÉCURISÉES:');
-    console.log(`   Volume total: $${metrics.summary.totalVolume?.toLocaleString() || 0}`);
-    console.log(`   Return %: ${metrics.summary.totalReturnPct?.toFixed(2) || 0}%`);
-    console.log(`   Trades: ${metrics.summary.totalTrades || 0}`);
-
-    // 4. Récupération du résumé
-    console.log('\n📋 Récupération du résumé...');
-    const summary = await client.getSummary();
-    
-    console.log('\n🎯 RÉSUMÉ SÉCURISÉ:');
-    console.log(`   Session expire: ${summary.session_expires}`);
-    console.log(`   Return $: $${summary.summary.totalReturnUsd?.toFixed(2) || 0}`);
+    console.log(`   Session expire: ${metrics.session_expires}`);
+    console.log(`   Métriques par symbole:`, metrics.metrics);
 
     console.log('\n✅ Exemple sécurisé terminé avec succès!');
 
@@ -94,8 +85,8 @@ async function multipleUsersExample() {
   console.log('\n📊 MÉTRIQUES MULTI-UTILISATEURS:');
   for (const client of clients) {
     try {
-      const summary = await client.getSummary();
-      console.log(`   ${client.config.userId}: $${summary.summary.totalVolume?.toLocaleString() || 0}`);
+      const metrics = await client.getMetrics();
+      console.log(`   ${client.config.userId}: ${metrics.metrics.length} symboles`);
     } catch (error) {
       console.log(`   ${client.config.userId}: Erreur récupération`);
     }

@@ -74,10 +74,7 @@ export interface PerformanceMetrics {
   periodEnd: string;
 }
 
-export interface SignedAggregates {
-  signature: string;
-  payload: PerformanceMetrics;
-}
+
 
 export interface AttestationQuote {
   quote: string;
@@ -107,9 +104,8 @@ export interface RequestAggregatesRequest {
 }
 
 export interface RequestMetricsResponse {
-  metrics_signed: SignedAggregates;
-  merkle_root: string;
-  logs_url?: string;
+  metrics: PerformanceMetrics[];
+  session_expires: string;
 }
 
 export interface RevokeRequest {
@@ -191,10 +187,4 @@ export interface AttestationVerificationResult {
   error?: string;
 }
 
-// Aggregate result type for enclave operations
-export interface AggregateResult {
-  signature: string;
-  payload: PerformanceMetrics;
-  merkle_root: string;
-  timestamp: string;
-}
+

@@ -171,30 +171,14 @@ export class PerformanceAggregatorServer {
       }
 
       const metrics = await this.database.getMetrics(sessionId);
-      const summary = await this.calculateSummaryFromDatabase(sessionId);
 
       return {
         metrics,
-        summary,
         session_expires: new Date(session.expiresAt).toISOString()
       };
     });
 
-    // Summary retrieval (authenticated by session)
-    this.fastify.get<{ Params: { sessionId: string } }>('/enclave/summary/:sessionId', async (request: FastifyRequest<{ Params: { sessionId: string } }>, reply: FastifyReply) => {
-      const { sessionId } = request.params;
 
-      const session = await this.database.getSession(sessionId);
-      if (!session) {
-        return reply.status(401).send({ error: 'Invalid or expired session' });
-      }
-
-      const summary = await this.calculateSummaryFromDatabase(sessionId);
-      return {
-        summary,
-        session_expires: new Date(session.expiresAt).toISOString()
-      };
-    });
 
     // Expired session cleanup
     this.fastify.post('/enclave/cleanup', async (request: FastifyRequest, reply: FastifyReply) => {

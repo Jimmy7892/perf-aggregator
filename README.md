@@ -189,37 +189,11 @@ GET /enclave/metrics/{sessionId}
       "periodEnd": "2024-01-15T23:59:59.999Z"
     }
   ],
-  "summary": {
-    "totalVolume": 125000.50,
-    "totalTrades": 45,
-    "totalReturnPct": 2.34,
-    "totalReturnUsd": 2737.62,
-    "totalFees": 187.50
-  },
   "session_expires": "2024-01-16T00:00:00.000Z"
 }
 ```
 
-### Summary Analytics
-```http
-GET /enclave/summary/{sessionId}
-```
-**Description**: Retrieve aggregated performance summary across all symbols.
-**Authentication**: Session-based authentication via session ID.
 
-**Response Example**:
-```json
-{
-  "summary": {
-    "totalVolume": 125000.50,
-    "totalTrades": 45,
-    "totalReturnPct": 2.34,
-    "totalReturnUsd": 2737.62,
-    "totalFees": 187.50
-  },
-  "session_expires": "2024-01-16T00:00:00.000Z"
-}
-```
 
 ## Data Formats
 
@@ -271,13 +245,7 @@ await client.register();
 
 // Retrieve performance metrics
 const metrics = await client.getMetrics();
-console.log('Trading Performance:', {
-  volume: metrics.summary.totalVolume,
-  trades: metrics.summary.totalTrades,
-  returnPct: metrics.summary.totalReturnPct,
-  returnUsd: metrics.summary.totalReturnUsd,
-  fees: metrics.summary.totalFees
-});
+console.log('Trading Performance:', metrics.metrics);
 
 // Clean up session
 await client.revoke();

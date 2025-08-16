@@ -169,31 +169,6 @@ export class TradeAggregator {
     console.log('🧹 Nettoyage des données anciennes terminé');
   }
 
-  // Obtenir un résumé pour l'API
-  getSummary(userId: string): {
-    totalVolume: number;
-    totalTrades: number;
-    totalReturnPct: number;
-    totalReturnUsd: number;
-    totalFees: number;
-  } {
-    const userMetrics = this.getAllUserMetrics(userId);
 
-    const totalVolume = userMetrics.reduce((sum, m) => sum + m.volume, 0);
-    const totalTrades = userMetrics.reduce((sum, m) => sum + m.trades, 0);
-    const totalFees = userMetrics.reduce((sum, m) => sum + m.totalFees, 0);
-    const totalReturnUsd = userMetrics.reduce((sum, m) => sum + m.returnUsd, 0);
-
-    // Return % pondéré par volume
-    const totalReturnPct = totalVolume > 0 ? (totalReturnUsd / totalVolume) * 100 : 0;
-
-    return {
-      totalVolume,
-      totalTrades,
-      totalReturnPct,
-      totalReturnUsd,
-      totalFees
-    };
-  }
 }
 
