@@ -4,10 +4,11 @@ Service dagrégation temps réel: collecte de trades via API REST optimisée, ag
 
 ## Architecture
 
+- **Service distant** : Hébergé dans une enclave/serveur sécurisé
 - **API REST** : Récupération des trades depuis les exchanges (polling optimisé avec retry)
-- **WebSocket** : Interface temps réel pour les clients (optionnel)
 - **TEE Enclave** : Traitement sécurisé des données sensibles
 - **Signature ED25519** : Intégrité cryptographique des agrégations
+- **Détection automatique** : Tous les symboles tradés détectés automatiquement
 
 ## Configuration
 
@@ -24,13 +25,25 @@ Service dagrégation temps réel: collecte de trades via API REST optimisée, ag
 - `sandbox` : Utiliser l'environnement de test
 - **Détection automatique** : Tous les symboles tradés sont détectés automatiquement
 
-## Build & exécution
+## Déploiement
 
-`ash
+### **Pour les utilisateurs (clients)**
+Le service est hébergé dans une enclave sécurisée. Les utilisateurs s'enregistrent via API :
+
+```powershell
+# PowerShell - Enregistrement simple
+.\register-user.ps1 -UserId "trader-john" -Exchange "binance" -ApiKey "abc123..." -Secret "xyz789..." -ServiceUrl "https://perf-aggregator.com"
+
+# Enregistrement sécurisé avec TEE Enclave
+.\register-user.ps1 -UserId "trader-john" -Exchange "binance" -ApiKey "abc123..." -Secret "xyz789..." -ServiceUrl "https://perf-aggregator.com" -Secure
+```
+
+### **Pour les développeurs (serveur)**
+```bash
 pnpm i
 pnpm build
 pnpm start
-`
+```
 
 ## Docker
 

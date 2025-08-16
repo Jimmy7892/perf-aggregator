@@ -19,12 +19,12 @@ param(
     
     [switch]$Sandbox,
     
-    [string]$ServiceUrl = "http://localhost:5000",
+    [string]$ServiceUrl = "https://perf-aggregator.yourdomain.com",
     
     [switch]$Secure
 )
 
-Write-Host "🚀 Enregistrement utilisateur sur Perf-Aggregator (Autonome)" -ForegroundColor Green
+Write-Host "🚀 Enregistrement utilisateur sur Perf-Aggregator (Service Distant)" -ForegroundColor Green
 Write-Host ""
 
 # Validation des paramètres
@@ -103,10 +103,11 @@ try {
     
     Write-Host ""
     Write-Host "🎯 Prochaines étapes:" -ForegroundColor Cyan
-    Write-Host "   • Le service va détecter automatiquement tous vos symboles tradés" -ForegroundColor White
+    Write-Host "   • Le service distant va détecter automatiquement tous vos symboles tradés" -ForegroundColor White
     Write-Host "   • Aucune configuration supplémentaire nécessaire" -ForegroundColor White
     Write-Host "   • Consultez vos métriques: $ServiceUrl/users/$UserId/summary" -ForegroundColor White
     Write-Host "   • Métriques détaillées: $ServiceUrl/users/$UserId/metrics" -ForegroundColor White
+    Write-Host "   • Vos credentials sont sécurisés dans l'enclave distant" -ForegroundColor White
     
 } catch {
     Write-Error "❌ Erreur lors de l'enregistrement: $($_.Exception.Message)"
