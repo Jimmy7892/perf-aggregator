@@ -8,16 +8,17 @@
  * - Implement comprehensive security controls
  */
 
-import Fastify from 'fastify';
+import Fastify, { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { decryptCredentials } from './libs/crypto.js';
 import { CryptoUtils } from './utils/crypto.js';
 import { logger } from './utils/logger.js';
 import { PublicLogsServer } from './api/public-logs.js';
-import { ExchangePoller } from './exchange-poller.js';
+import { ExchangePoller, ExchangeSnapshot, AggregatedMetrics } from './exchange-poller.js';
 import { UserConfig, PerformanceMetrics } from './types/index.js';
 import { getConfig } from './config/index.js';
+import { DatabaseService, UserSession } from './services/database.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -36,13 +37,31 @@ interface CredentialEnvelope {
   };
 }
 
+
+interface PollingError {
+  userId: string;
+  error: Error;
+  type: string;
+}
+
+interface MetricsSummary {
+  totalReturn: number;
+  totalReturnPct: number;
+  totalVolume: number;
+  totalFees: number;
+  tradeCount: number;
+  sharpeRatio?: number;
+  maxDrawdown?: number;
+  volatility?: number;
+  lastUpdated: string;
+}
+
 export class PerformanceAggregatorServer {
-  private fastify: any;
+  private fastify: FastifyInstance;
   private exchangePoller: ExchangePoller;
   private publicLogsServer?: PublicLogsServer;
   private config = getConfig();
-  private userSessions = new Map<string, { userId: string; config: UserConfig; expiresAt: number }>();
-  private metricsStore = new Map<string, any[]>(); // Temporary metrics storage
+  private database: DatabaseService;
 
   constructor() {
     this.fastify = Fastify({ logger: true });
@@ -51,6 +70,17 @@ export class PerformanceAggregatorServer {
       maxRetries: 3,
       enableRateLimit: true
     });
+    this.database = new DatabaseService({
+      // Configuration from environment variables
+      connectionString: process.env.DATABASE_URL,
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      database: process.env.DB_NAME || 'perf_aggregator',
+      username: process.env.DB_USER || 'app_service',
+      password: process.env.DB_PASSWORD,
+      ssl: process.env.DB_SSL === 'true',
+      maxConnections: parseInt(process.env.DB_MAX_CONNECTIONS || '10')
+    });
 
     this.setupRoutes();
     this.setupEventHandlers();
@@ -58,7 +88,7 @@ export class PerformanceAggregatorServer {
 
   private setupRoutes(): void {
     // Enclave attestation endpoint
-    this.fastify.get('/attestation/quote', async (request: any, reply: any) => {
+    this.fastify.get('/attestation/quote', async (request: FastifyRequest, reply: FastifyReply) => {
       return {
         enclave_id: 'perf-aggregator-enclave-v1',
         attestation_type: 'SGX_QUOTE',
@@ -69,8 +99,8 @@ export class PerformanceAggregatorServer {
     });
 
     // Secure credential submission endpoint
-    this.fastify.post('/enclave/submit_key', async (request: any, reply: any) => {
-      const envelope = request.body as CredentialEnvelope;
+    this.fastify.post<{ Body: CredentialEnvelope }>('/enclave/submit_key', async (request: FastifyRequest<{ Body: CredentialEnvelope }>, reply: FastifyReply) => {
+      const envelope = request.body;
 
       try {
         // Decrypt credentials using X25519 ECDH + AES-GCM
@@ -98,12 +128,15 @@ export class PerformanceAggregatorServer {
         const sessionId = CryptoUtils.generateSessionId();
         const expiresAt = Date.now() + (envelope.metadata.ttl * 1000);
 
-        // Store session
-        this.userSessions.set(sessionId, {
+        // Store session in database
+        const session: UserSession = {
+          id: sessionId,
           userId,
           config: userConfig,
-          expiresAt
-        });
+          expiresAt,
+          createdAt: new Date()
+        };
+        await this.database.storeSession(session);
 
         // Add user to exchange poller
         await this.exchangePoller.addUser(userConfig);
@@ -129,16 +162,16 @@ export class PerformanceAggregatorServer {
     });
 
     // Metrics retrieval (authenticated by session)
-    this.fastify.get('/enclave/metrics/:sessionId', async (request: any, reply: any) => {
-      const { sessionId } = request.params as { sessionId: string };
+    this.fastify.get<{ Params: { sessionId: string } }>('/enclave/metrics/:sessionId', async (request: FastifyRequest<{ Params: { sessionId: string } }>, reply: FastifyReply) => {
+      const { sessionId } = request.params;
 
-      const session = this.userSessions.get(sessionId);
-      if (!session || session.expiresAt < Date.now()) {
+      const session = await this.database.getSession(sessionId);
+      if (!session) {
         return reply.status(401).send({ error: 'Invalid or expired session' });
       }
 
-      const metrics = this.metricsStore.get(session.userId) || [];
-      const summary = this.calculateSummary(session.userId);
+      const metrics = await this.database.getMetrics(sessionId);
+      const summary = await this.calculateSummaryFromDatabase(sessionId);
 
       return {
         metrics,
@@ -148,15 +181,15 @@ export class PerformanceAggregatorServer {
     });
 
     // Summary retrieval (authenticated by session)
-    this.fastify.get('/enclave/summary/:sessionId', async (request: any, reply: any) => {
-      const { sessionId } = request.params as { sessionId: string };
+    this.fastify.get<{ Params: { sessionId: string } }>('/enclave/summary/:sessionId', async (request: FastifyRequest<{ Params: { sessionId: string } }>, reply: FastifyReply) => {
+      const { sessionId } = request.params;
 
-      const session = this.userSessions.get(sessionId);
-      if (!session || session.expiresAt < Date.now()) {
+      const session = await this.database.getSession(sessionId);
+      if (!session) {
         return reply.status(401).send({ error: 'Invalid or expired session' });
       }
 
-      const summary = this.calculateSummary(session.userId);
+      const summary = await this.calculateSummaryFromDatabase(sessionId);
       return {
         summary,
         session_expires: new Date(session.expiresAt).toISOString()
@@ -164,34 +197,25 @@ export class PerformanceAggregatorServer {
     });
 
     // Expired session cleanup
-    this.fastify.post('/enclave/cleanup', async (request: any, reply: any) => {
-      const now = Date.now();
-      let cleanedCount = 0;
-
-      for (const [sessionId, session] of this.userSessions.entries()) {
-        if (session.expiresAt < now) {
-          this.userSessions.delete(sessionId);
-          cleanedCount++;
-        }
-      }
-
+    this.fastify.post('/enclave/cleanup', async (request: FastifyRequest, reply: FastifyReply) => {
+      const cleanedCount = await this.database.cleanupExpiredSessions();
       return { cleaned_sessions: cleanedCount };
     });
   }
 
   private setupEventHandlers(): void {
     // Process snapshots from exchange poller
-    this.exchangePoller.on('snapshot', (snapshot) => {
-      this.processSnapshot(snapshot);
+    this.exchangePoller.on('snapshot', async (snapshot) => {
+      await this.processSnapshot(snapshot);
     });
 
     // Process calculated metrics
-    this.exchangePoller.on('metrics', (metrics) => {
-      this.storeMetrics(metrics);
+    this.exchangePoller.on('metrics', async (metrics) => {
+      await this.storeMetrics(metrics);
     });
 
     // Handle polling errors
-    this.exchangePoller.on('error', (error) => {
+    this.exchangePoller.on('error', (error: PollingError) => {
       logger.error('exchange_poller', 'polling_error', {
         details: {
           user_id_hash: error.userId?.slice(0, 8) + '*'.repeat(8),
@@ -211,7 +235,14 @@ export class PerformanceAggregatorServer {
    * Decrypt credential envelope using X25519 ECDH + AES-GCM
    * Uses actual cryptographic implementation
    */
-  private decryptCredentialEnvelope(envelope: CredentialEnvelope): any {
+  private decryptCredentialEnvelope(envelope: CredentialEnvelope): { 
+    userId: string; 
+    exchange: string; 
+    apiKey: string; 
+    secret: string; 
+    accountType?: string; 
+    sandbox?: boolean; 
+  } {
     // In production, this private key would be securely stored in TEE
     const enclavePrivateKey = this.getEnclavePrivateKey();
     
@@ -245,6 +276,9 @@ MC4CAQAwBQYDK2VuBCIEIGg8+h0l6nGrXdCgFeUsOOv3xv2l8o9kRJq2F+HsPD2j
 
   async start(): Promise<void> {
     try {
+      // Initialize database first
+      await this.database.initialize();
+
       await this.fastify.listen({ port: this.config.server.port, host: this.config.server.host });
 
       // Start public logs server if enabled
@@ -257,18 +291,20 @@ MC4CAQAwBQYDK2VuBCIEIGg8+h0l6nGrXdCgFeUsOOv3xv2l8o9kRJq2F+HsPD2j
         details: {
           host: this.config.server.host,
           port: this.config.server.port,
-          public_logs: this.config.logging.publicEnabled
+          public_logs: this.config.logging.publicEnabled,
+          database: this.database.getStats()
         }
       });
 
       console.log(`🔐 Performance Aggregator started on ${this.config.server.host}:${this.config.server.port}`);
+      console.log(`💾 Database: ${this.database.getStats().isConnected ? 'Connected' : 'In-memory fallback'}`);
 
       // Start exchange poller
       await this.exchangePoller.start();
 
       // Setup session cleanup
-      setInterval(() => {
-        this.cleanupExpiredSessions();
+      setInterval(async () => {
+        await this.cleanupExpiredSessions();
       }, this.config.cleanup.sessionCleanupInterval);
 
     } catch (error) {
@@ -296,45 +332,154 @@ MC4CAQAwBQYDK2VuBCIEIGg8+h0l6nGrXdCgFeUsOOv3xv2l8o9kRJq2F+HsPD2j
   /**
    * Process exchange snapshot and store in database
    */
-  private processSnapshot(snapshot: any): void {
-    logger.debug('server', 'snapshot_processed', {
-      details: {
-        user_id_hash: snapshot.userId?.slice(0, 8) + '*'.repeat(8),
-        exchange: snapshot.exchange,
-        portfolio_value: snapshot.portfolioValue?.total
-      }
-    });
+  private async processSnapshot(snapshot: ExchangeSnapshot): Promise<void> {
+    if (!snapshot || !snapshot.userId) {
+      logger.warn('server', 'invalid_snapshot', { details: { reason: 'Missing userId or snapshot' } });
+      return;
+    }
 
-    // In production, this would store to performance_snapshots table
-    // For now, keep in memory for demonstration
+    try {
+      // Find session ID for this user
+      const sessionId = await this.findSessionIdForUser(snapshot.userId);
+      if (!sessionId) {
+        logger.warn('server', 'no_session_for_snapshot', { 
+          details: { user_id_hash: snapshot.userId.slice(0, 8) + '*'.repeat(8) } 
+        });
+        return;
+      }
+
+      // Store snapshot in database
+      await this.database.storeSnapshot(sessionId, snapshot);
+
+      logger.debug('server', 'snapshot_processed', {
+        details: {
+          user_id_hash: snapshot.userId.slice(0, 8) + '*'.repeat(8),
+          exchange: snapshot.exchange,
+          portfolio_value: snapshot.portfolioValue?.total
+        }
+      });
+    } catch (error) {
+      logger.error('server', 'snapshot_processing_failed', {
+        details: {
+          user_id_hash: snapshot.userId.slice(0, 8) + '*'.repeat(8),
+          error: error instanceof Error ? error.message : String(error)
+        }
+      });
+    }
   }
 
   /**
    * Store calculated metrics
    */
-  private storeMetrics(metrics: any): void {
-    const userMetrics = this.metricsStore.get(metrics.userId) || [];
-    userMetrics.push(metrics);
-    
-    // Keep only last 100 metrics per user to prevent memory issues
-    if (userMetrics.length > 100) {
-      userMetrics.splice(0, userMetrics.length - 100);
+  private async storeMetrics(metrics: AggregatedMetrics): Promise<void> {
+    if (!metrics || !metrics.userId) {
+      logger.warn('server', 'invalid_metrics', { details: { reason: 'Missing userId or metrics' } });
+      return;
     }
-    
-    this.metricsStore.set(metrics.userId, userMetrics);
 
-    logger.debug('server', 'metrics_stored', {
-      details: {
-        user_id_hash: metrics.userId?.slice(0, 8) + '*'.repeat(8),
-        metrics_count: userMetrics.length
+    try {
+      // Find session ID for this user
+      const sessionId = await this.findSessionIdForUser(metrics.userId);
+      if (!sessionId) {
+        logger.warn('server', 'no_session_for_metrics', { 
+          details: { user_id_hash: metrics.userId.slice(0, 8) + '*'.repeat(8) } 
+        });
+        return;
       }
-    });
+
+      // Store metrics in database
+      await this.database.storeMetrics(sessionId, metrics);
+
+      logger.debug('server', 'metrics_stored', {
+        details: {
+          user_id_hash: metrics.userId.slice(0, 8) + '*'.repeat(8),
+          return_pct: metrics.totalReturnPct
+        }
+      });
+    } catch (error) {
+      logger.error('server', 'metrics_storage_failed', {
+        details: {
+          user_id_hash: metrics.userId.slice(0, 8) + '*'.repeat(8),
+          error: error instanceof Error ? error.message : String(error)
+        }
+      });
+    }
   }
 
   /**
-   * Calculate summary for user
+   * Find session ID for a specific user
    */
-  private calculateSummary(userId: string): any {
+  private async findSessionIdForUser(userId: string): Promise<string | null> {
+    // For now, use a simple lookup - in production, this would be a proper database query
+    // This is a temporary implementation until full database integration
+    return 'temp-session-' + userId.slice(0, 8);
+  }
+
+  /**
+   * Calculate summary from database
+   */
+  private async calculateSummaryFromDatabase(sessionId: string): Promise<MetricsSummary> {
+    try {
+      const metrics = await this.database.getMetrics(sessionId);
+      
+      if (metrics.length === 0) {
+        return {
+          totalReturn: 0,
+          totalReturnPct: 0,
+          totalVolume: 0,
+          totalFees: 0,
+          tradeCount: 0,
+          lastUpdated: new Date().toISOString()
+        };
+      }
+
+      const latest = metrics[metrics.length - 1];
+      return {
+        totalReturn: latest.totalReturn || 0,
+        totalReturnPct: latest.totalReturnPct || 0,
+        totalVolume: latest.totalVolume || 0,
+        totalFees: latest.totalFees || 0,
+        tradeCount: latest.tradeCount || 0,
+        sharpeRatio: latest.sharpeRatio || 0,
+        maxDrawdown: latest.maxDrawdown || 0,
+        volatility: latest.volatility || 0,
+        lastUpdated: latest.createdAt.toISOString()
+      };
+    } catch (error) {
+      logger.error('server', 'summary_calculation_failed', {
+        details: {
+          session_id: sessionId,
+          error: error instanceof Error ? error.message : String(error)
+        }
+      });
+      
+      return {
+        totalReturn: 0,
+        totalReturnPct: 0,
+        totalVolume: 0,
+        totalFees: 0,
+        tradeCount: 0,
+        lastUpdated: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Calculate summary for user (legacy method - kept for compatibility)
+   */
+  private calculateSummary(userId: string): MetricsSummary {
+    if (!userId) {
+      logger.warn('server', 'invalid_user_id', { details: { reason: 'Missing userId for summary calculation' } });
+      return {
+        totalReturn: 0,
+        totalReturnPct: 0,
+        totalVolume: 0,
+        totalFees: 0,
+        tradeCount: 0,
+        lastUpdated: new Date().toISOString()
+      };
+    }
+
     const metrics = this.metricsStore.get(userId) || [];
     
     if (metrics.length === 0) {
@@ -349,6 +494,18 @@ MC4CAQAwBQYDK2VuBCIEIGg8+h0l6nGrXdCgFeUsOOv3xv2l8o9kRJq2F+HsPD2j
     }
 
     const latest = metrics[metrics.length - 1];
+    if (!latest) {
+      logger.warn('server', 'invalid_latest_metrics', { details: { userId: userId.slice(0, 8) + '*'.repeat(8) } });
+      return {
+        totalReturn: 0,
+        totalReturnPct: 0,
+        totalVolume: 0,
+        totalFees: 0,
+        tradeCount: 0,
+        lastUpdated: new Date().toISOString()
+      };
+    }
+
     return {
       totalReturn: latest.totalReturn || 0,
       totalReturnPct: latest.totalReturnPct || 0,
@@ -370,6 +527,9 @@ MC4CAQAwBQYDK2VuBCIEIGg8+h0l6nGrXdCgFeUsOOv3xv2l8o9kRJq2F+HsPD2j
     }
 
     await this.exchangePoller.stop();
+    
+    // Close database connection
+    await this.database.close();
 
     logger.info('server', 'stopped', {
       details: { message: 'Performance Aggregator server stopped' }

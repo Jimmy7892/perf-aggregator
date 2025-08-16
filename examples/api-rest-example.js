@@ -1,23 +1,23 @@
 import { ExchangeConnector } from '../src/exchange-connector.js';
 
-// Configuration optimisée pour API REST avec polling adaptatif
+// Optimized configuration for REST API with adaptive polling
 const config = {
   userId: 'user-123',
   exchange: 'binance',
   apiKey: process.env.BINANCE_API_KEY,
   secret: process.env.BINANCE_SECRET,
-  sandbox: true, // Utiliser le sandbox pour les tests
-  accountType: 'spot', // spot, futures, ou margin
-  apiInterval: 60000, // 1 minute entre les appels API (polling adaptatif)
+  sandbox: true, // Use sandbox for testing
+  accountType: 'spot', // spot, futures, or margin
+  apiInterval: 60000, // 1 minute between API calls (adaptive polling)
   maxRetries: 3
 };
 
-// Initialiser le connecteur
+// Initialize connector
 const connector = new ExchangeConnector();
 
-// Écouter les trades
+// Listen for trades
 connector.on('trade', (trade) => {
-  console.log('📊 Trade reçu:', {
+  console.log('📊 Trade received:', {
     userId: trade.userId,
     symbol: trade.symbol,
     side: trade.side,
@@ -27,27 +27,27 @@ connector.on('trade', (trade) => {
   });
 });
 
-// Démarrer le service
+// Start service
 async function startService() {
   try {
-    // Ajouter l'utilisateur
+    // Add user
     connector.addUser(config);
     
-    // Démarrer le monitoring
+    // Start monitoring
     await connector.start();
     
-    console.log('✅ Service démarré avec API REST adaptatif');
-    console.log(`📡 Monitoring automatique de tous les symboles (${config.accountType})`);
-    console.log('🔄 Intervalle adaptatif : 30s-5min selon l\'activité');
+    console.log('✅ Service started with adaptive REST API');
+    console.log(`📡 Automatic monitoring of all symbols (${config.accountType})`);
+    console.log('🔄 Adaptive interval: 30s-5min based on activity');
     
   } catch (error) {
-    console.error('❌ Erreur démarrage:', error);
+    console.error('❌ Startup error:', error);
   }
 }
 
-// Gestion propre de l'arrêt
+// Clean shutdown handling
 process.on('SIGINT', () => {
-  console.log('\n🛑 Arrêt du service...');
+  console.log('\n🛑 Stopping service...');
   connector.stop();
   process.exit(0);
 });

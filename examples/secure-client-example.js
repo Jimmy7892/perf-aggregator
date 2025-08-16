@@ -1,8 +1,8 @@
 import { SecureClient } from '../src/client/secure-client.js';
 
-// Configuration sécurisée - communication directe avec l'enclave
+// Secure configuration - direct communication with enclave
 const config = {
-  enclaveUrl: 'https://perf-aggregator.com:3000', // Port de l'enclave
+  enclaveUrl: 'https://perf-aggregator.com:3000', // Enclave port
   userId: 'trader-john',
   exchange: 'binance',
   apiKey: process.env.BINANCE_API_KEY,
@@ -14,10 +14,10 @@ const config = {
 
 async function secureRegistrationExample() {
   try {
-    console.log('🔐 EXEMPLE D\'ENREGISTREMENT SÉCURISÉ');
-    console.log('=====================================\n');
+    console.log('🔐 SECURE REGISTRATION EXAMPLE');
+    console.log('================================\n');
 
-    // 1. Créer le client sécurisé
+    // 1. Create secure client
     const client = new SecureClient(config);
     console.log('✅ Client sécurisé créé');
 

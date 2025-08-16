@@ -8,7 +8,7 @@ interface SecureClientConfig {
   secret: string;
   accountType?: 'spot' | 'futures' | 'margin';
   sandbox?: boolean;
-  ttl?: number; // Durée de vie de la session en secondes
+  ttl?: number; // Session lifetime in seconds
 }
 
 interface EnclaveResponse {
@@ -122,8 +122,8 @@ export class SecureClient {
   }
 
   private async encryptCredentials(credentials: any): Promise<any> {
-    // En production, utiliser de vrais algorithmes de chiffrement
-    // Ici on simule pour la démonstration
+    // In production, use real encryption algorithms
+    // Simulation for demonstration purposes
 
     const credentialsJson = JSON.stringify(credentials);
 
