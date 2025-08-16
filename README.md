@@ -12,10 +12,11 @@ User → Enclave (directement)
 ```
 
 ### **Composants**
-- **Enclave sécurisée** : Port 3000 - Traitement des credentials chiffrés
+- **Enclave sécurisée** : Port 3000 - **Perf-Aggregator complet** dans l'enclave
 - **Service principal** : Port 5000 - Interface publique (optionnel)
-- **API REST** : Récupération des trades depuis les exchanges (polling adaptatif)
-- **TEE Enclave** : Traitement sécurisé des données sensibles
+- **ExchangeConnector** : Collecte des trades depuis les exchanges (polling adaptatif)
+- **TradeAggregator** : Calcul des métriques en temps réel
+- **TEE Enclave** : Traitement sécurisé de toutes les données
 - **Signature ED25519** : Intégrité cryptographique des agrégations
 - **Détection automatique** : Tous les symboles tradés détectés automatiquement
 

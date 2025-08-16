@@ -8,17 +8,19 @@ Les utilisateurs ne doivent **jamais** exposer leurs API keys à votre serveur p
 
 ### **Flux sécurisé**
 ```
-┌─────────────┐    Chiffré     ┌─────────────┐    API REST    ┌─────────────┐
-│   Client    │ ──────────────► │   Enclave   │ ──────────────► │  Exchange   │
-│ (PowerShell)│                 │ (Port 3000) │                 │ (Binance)   │
-└─────────────┘                 └─────────────┘                 └─────────────┘
-       │                               │                               │
-       │                               │                               │
-       ▼                               ▼                               ▼
-┌─────────────┐                 ┌─────────────┐                 ┌─────────────┐
-│ API Keys    │                 │ Credentials │                 │ Trade Data  │
-│ Chiffrées   │                 │ Déchiffrés  │                 │ (JSON)      │
-└─────────────┘                 └─────────────┘                 └─────────────┘
+┌─────────────┐    Chiffré     ┌─────────────────────────────────────────┐    API REST    ┌─────────────┐
+│   Client    │ ──────────────► │           ENCLAVE SÉCURISÉE             │ ──────────────► │  Exchange   │
+│ (PowerShell)│                 │  ┌─────────────────────────────────────┐ │                 │ (Binance)   │
+└─────────────┘                 │  │        Perf-Aggregator COMPLET      │ │                 └─────────────┘
+       │                        │  │                                     │ │
+       │                        │  │  • ExchangeConnector               │ │
+       ▼                        │  │  • TradeAggregator                 │ │
+┌─────────────┐                 │  │  • Métriques calculées             │ │
+│ API Keys    │                 │  │  • Credentials déchiffrés          │ │
+│ Chiffrées   │                 │  │  • Sessions utilisateurs           │ │
+└─────────────┘                 │  │  • API REST vers exchanges         │ │
+                                │  └─────────────────────────────────────┘ │
+                                └─────────────────────────────────────────┘
 ```
 
 ### **Composants**
@@ -29,11 +31,14 @@ Les utilisateurs ne doivent **jamais** exposer leurs API keys à votre serveur p
 - **Chiffrement** : X25519 + AES-GCM
 - **Attestation** : Vérification de l'enclave
 
-#### **2. Enclave (Port 3000)**
+#### **2. Enclave (Port 3000) - Perf-Aggregator complet**
 - **TEE** : Trusted Execution Environment
-- **Chiffrement** : Déchiffrement des credentials
-- **Sessions** : Gestion temporaire des sessions
-- **Métriques** : Calcul et stockage sécurisé
+- **Perf-Aggregator** : Service complet dans l'enclave
+- **ExchangeConnector** : Collecte des trades depuis les exchanges
+- **TradeAggregator** : Calcul des métriques en temps réel
+- **Credentials** : Déchiffrement et stockage sécurisé
+- **Sessions** : Gestion temporaire des sessions utilisateurs
+- **API** : Endpoints pour consultation des métriques
 
 #### **3. Service principal (Port 5000) - Optionnel**
 - **Interface publique** : Pour les utilisateurs non-sécurisés
@@ -148,11 +153,12 @@ node src/server.js
 5. Enclave crée une session temporaire
 6. Enclave retourne un session ID
 
-### **2. Collecte des données**
-1. Enclave utilise les credentials pour se connecter à l'exchange
-2. Enclave collecte les trades via API REST
-3. Enclave agrège les données en temps réel
-4. Enclave calcule les métriques de performance
+### **2. Collecte et traitement des données**
+1. **Enclave** utilise les credentials pour se connecter à l'exchange
+2. **Enclave** collecte les trades via API REST (ExchangeConnector)
+3. **Enclave** agrège les données en temps réel (TradeAggregator)
+4. **Enclave** calcule les métriques de performance (volume, return %, etc.)
+5. **Enclave** stocke les résultats de manière sécurisée
 
 ### **3. Récupération des résultats**
 1. Client utilise son session ID pour récupérer les métriques
